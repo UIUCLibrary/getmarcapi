@@ -1,7 +1,6 @@
 from setuptools import setup
 
 setup(
-    name='getmarcapi',
     packages=['getmarcapi'],
     include_package_data=True,
     zip_safe=False,

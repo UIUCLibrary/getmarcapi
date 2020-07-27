@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 @app.route('/', methods=['GET'])
 def index() -> str:
-    return Response("Sample", 200, content_type="text")
+    return "Sample"
 
 
 @app.route('/record')
@@ -29,6 +29,8 @@ def get_record() -> Response:
         return Response(data, headers=header, content_type="text/xml")
     except AttributeError as e:
         return Response(f"Failed. {e}", 400, content_type="text")
+
+# TODO: load configuration
 
 
 if __name__ == '__main__':
