@@ -1,5 +1,3 @@
-import os
-from typing import Mapping
 from .config import get_config
 from flask import Flask, Response, request
 from uiucprescon import getmarc2
