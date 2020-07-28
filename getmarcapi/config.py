@@ -76,4 +76,3 @@ class ConfigLoader:
 
     def get_config_value(self, key: str):
         return self.strategy.get_config_value(key)
-
