@@ -307,7 +307,7 @@ pipeline {
                                 patterns: [
                                     [pattern: "dist/", type: 'INCLUDE'],
                                     [pattern: 'build/', type: 'INCLUDE'],
-                                    [pattern: '.pytest_cache/', type: 'INCLUDE'],
+                                    [pattern: '**/__pycache__/', type: 'INCLUDE'],
                                     [pattern: '.mypy_cache/', type: 'INCLUDE'],
                                     [pattern: '.tox/', type: 'INCLUDE'],
                                     [pattern: 'getmarcapi1.stats', type: 'INCLUDE'],
