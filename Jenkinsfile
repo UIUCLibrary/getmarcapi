@@ -182,36 +182,36 @@ pipeline {
 //                                 }
 //                             }
 //                         }
-                        stage("pyDocStyle"){
-                            steps{
-                                catchError(buildResult: 'SUCCESS', message: 'Did not pass all pyDocStyle tests', stageResult: 'UNSTABLE') {
-                                    sh(
-                                        label: "Run pydocstyle",
-                                        script: '''mkdir -p reports
-                                                   pydocstyle getmarcapi > reports/pydocstyle-report.txt
-                                                   '''
-                                    )
-                                }
-                            }
-                            post {
-                                always{
-                                    recordIssues(tools: [pyDocStyle(pattern: 'reports/pydocstyle-report.txt')])
-                                }
-                            }
-                        }
-//                         stage("MyPy") {
+//                         stage("pyDocStyle"){
 //                             steps{
-//                                 catchError(buildResult: 'SUCCESS', message: 'mypy found issues', stageResult: 'UNSTABLE') {
-//                                     sh "mypy -p getmarcapi.getmarc2 --namespace-packages --html-report reports/mypy/html/  | tee logs/mypy.log"
+//                                 catchError(buildResult: 'SUCCESS', message: 'Did not pass all pyDocStyle tests', stageResult: 'UNSTABLE') {
+//                                     sh(
+//                                         label: "Run pydocstyle",
+//                                         script: '''mkdir -p reports
+//                                                    pydocstyle getmarcapi > reports/pydocstyle-report.txt
+//                                                    '''
+//                                     )
 //                                 }
 //                             }
 //                             post {
-//                                 always {
-//                                     recordIssues(tools: [myPy(name: 'MyPy', pattern: 'logs/mypy.log')])
-//                                     publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'reports/mypy/html/', reportFiles: 'index.html', reportName: 'MyPy HTML Report', reportTitles: ''])
+//                                 always{
+//                                     recordIssues(tools: [pyDocStyle(pattern: 'reports/pydocstyle-report.txt')])
 //                                 }
 //                             }
 //                         }
+                        stage("MyPy") {
+                            steps{
+                                catchError(buildResult: 'SUCCESS', message: 'mypy found issues', stageResult: 'UNSTABLE') {
+                                    sh "mypy -p getmarcapi.getmarc2 --namespace-packages --html-report reports/mypy/html/  | tee logs/mypy.log"
+                                }
+                            }
+                            post {
+                                always {
+                                    recordIssues(tools: [myPy(name: 'MyPy', pattern: 'logs/mypy.log')])
+                                    publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'reports/mypy/html/', reportFiles: 'index.html', reportName: 'MyPy HTML Report', reportTitles: ''])
+                                }
+                            }
+                        }
                         stage("Tox") {
                             when{
                                 equals expected: true, actual: params.TEST_RUN_TOX
