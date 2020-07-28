@@ -491,9 +491,10 @@ pipeline {
                                             deleteDirs: true,
                                             patterns: [
                                                 [pattern: 'dist/', type: 'INCLUDE'],
+                                                [pattern: 'tests/__pycache__/', type: 'INCLUDE'],
                                                 [pattern: 'build/', type: 'INCLUDE'],
                                                 [pattern: '.tox/', type: 'INCLUDE'],
-                                                ]
+                                            ]
                                         )
                                     }
                                 }
@@ -524,9 +525,10 @@ pipeline {
                                             deleteDirs: true,
                                             patterns: [
                                                 [pattern: 'dist/', type: 'INCLUDE'],
+                                                [pattern: 'tests/__pycache__/', type: 'INCLUDE'],
                                                 [pattern: 'build/', type: 'INCLUDE'],
                                                 [pattern: '.tox/', type: 'INCLUDE'],
-                                                ]
+                                            ]
                                         )
                                     }
                                 }
