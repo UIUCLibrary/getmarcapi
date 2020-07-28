@@ -1,6 +1,7 @@
 bandit
 coverage
 devpi-client
+flask
 flake8
 mypy
 pep517
@@ -10,3 +11,4 @@ pytest
 sphinx
 sphinxcontrib.spelling
 tox
+uiucprescon.getmarc2
