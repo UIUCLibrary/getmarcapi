@@ -1,4 +1,3 @@
-
 def getDevPiStagingIndex(){
 
     if (env.TAG_NAME?.trim()){
