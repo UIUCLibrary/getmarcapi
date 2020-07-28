@@ -12,6 +12,12 @@ def index() -> str:
 
 @app.route('/record')
 def get_record() -> Response:
+    """Get the record data for a given bibid.
+
+    Returns:
+        XML data
+
+    """
     bibid = request.args.get("bibid")
     if bibid is None:
         return Response("Missing required param bibid", status=422)
