@@ -1,3 +1,5 @@
+"""Main app module for loading the routes."""
+
 from flask import Flask, Response, request
 from uiucprescon import getmarc2
 
@@ -7,11 +9,22 @@ app = Flask(__name__)
 
 @app.route('/', methods=['GET'])
 def index() -> str:
+    """Root page of the api. Something will go here sometime.
+
+    Returns:
+        Nothing really goes here yet
+    """
     return "Sample"
 
 
 @app.route('/record')
 def get_record() -> Response:
+    """Get the record data for a given bibid.
+
+    Returns:
+        XML data
+
+    """
     bibid = request.args.get("bibid")
     if bibid is None:
         return Response("Missing required param bibid", status=422)
