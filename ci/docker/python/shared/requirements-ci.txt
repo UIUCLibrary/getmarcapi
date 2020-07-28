@@ -11,4 +11,4 @@ pytest
 sphinx
 sphinxcontrib.spelling
 tox
-uiucprescon.getmarc2
+uiucprescon.getmarc2>=0.0.1b1
