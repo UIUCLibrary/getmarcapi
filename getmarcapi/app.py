@@ -34,8 +34,6 @@ def get_record() -> Response:
     except AttributeError as e:
         return Response(f"Failed. {e}", 400, content_type="text")
 
-# TODO: load configuration
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
