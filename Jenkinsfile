@@ -202,7 +202,7 @@ pipeline {
                         stage("MyPy") {
                             steps{
                                 catchError(buildResult: 'SUCCESS', message: 'mypy found issues', stageResult: 'UNSTABLE') {
-                                    sh "mypy -p getmarcapi.getmarc2 --namespace-packages --html-report reports/mypy/html/  | tee logs/mypy.log"
+                                    sh "mypy -p getmarcapi --html-report reports/mypy/html/  > logs/mypy.log"
                                 }
                             }
                             post {
