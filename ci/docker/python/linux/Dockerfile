@@ -3,7 +3,7 @@ FROM python:${PYTHON_VERSION} as wheel_builder
 
 ARG PIP_EXTRA_INDEX_URL
 ARG PIP_TRUSTED_HOST
-
+ARG PIP_INDEX_URL
 RUN python -m pip install --upgrade pip &&  \
     pip install setuptools && \
     pip install wheel
