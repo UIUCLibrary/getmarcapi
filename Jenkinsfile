@@ -447,13 +447,6 @@ pipeline {
                     matrix{
                         axes{
                             axis {
-                                name "PLATFORM"
-                                values(
-//                                     "windows",
-                                    "linux"
-                                )
-                            }
-                            axis {
                                 name "PYTHON_VERSION"
                                 values(
                                     "3.7",
@@ -463,8 +456,8 @@ pipeline {
                         }
                         agent {
                             dockerfile {
-                                filename "ci/docker/python/${PLATFORM}/Dockerfile"
-                                label "${PLATFORM} && docker"
+                                filename "ci/docker/python/linux/Dockerfile"
+                                label "linux && docker"
                                 additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
                             }
                         }
@@ -604,13 +597,6 @@ pipeline {
                     matrix {
                         axes {
                             axis {
-                                name 'PLATFORM'
-                                values(
-                                    "linux",
-//                                     "windows"
-                                )
-                            }
-                            axis {
                                 name 'PYTHON_VERSION'
                                 values '3.7', '3.8'
                             }
@@ -620,8 +606,8 @@ pipeline {
                             stage("Testing DevPi wheel Package"){
                                 agent {
                                     dockerfile {
-                                        filename "ci/docker/python/${PLATFORM}/Dockerfile"
-                                        label "${PLATFORM} && docker"
+                                        filename "ci/docker/python/linux/Dockerfile"
+                                        label "linux && docker"
                                         additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
                                     }
                                 }
@@ -645,8 +631,8 @@ pipeline {
                             stage("Testing DevPi sdist Package"){
                                 agent {
                                     dockerfile {
-                                        filename "ci/docker/python/${PLATFORM}/Dockerfile"
-                                        label "${PLATFORM} && docker"
+                                        filename "ci/docker/python/linux/Dockerfile"
+                                        label "linux && docker"
                                         additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
                                     }
                                 }
