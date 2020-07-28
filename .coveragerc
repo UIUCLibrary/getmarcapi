@@ -1,0 +1,10 @@
+[run]
+branch = True
+source = getmarcapi
+
+[paths]
+source = getmarcapi
+
+[report]
+exclude_lines =
+    if TYPE_CHECKING:

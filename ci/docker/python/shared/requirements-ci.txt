@@ -1,0 +1,14 @@
+bandit
+coverage
+devpi-client
+flask
+flake8
+mypy
+pep517
+pydocstyle
+pylint
+pytest
+sphinx
+sphinxcontrib.spelling
+tox
+uiucprescon.getmarc2
