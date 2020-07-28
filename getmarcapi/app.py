@@ -30,8 +30,8 @@ def get_record() -> Response:
         data = server.bibid_record(bibid)
         header = {"x-api-version": "v1"}
         return Response(data, headers=header, content_type="text/xml")
-    except AttributeError as e:
-        return Response(f"Failed. {e}", 400, content_type="text")
+    except AttributeError as error:
+        return Response(f"Failed. {error}", 400, content_type="text")
 
 
 if __name__ == '__main__':
