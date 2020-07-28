@@ -471,21 +471,12 @@ pipeline {
                                     script{
                                         findFiles(glob: "**/*.tar.gz").each{
                                             timeout(15){
-                                                if(PLATFORM == "windows"){
-                                                    bat(
-                                                        script: """python --version
-                                                                   tox --installpkg=${it.path} -e py -vv
-                                                                   """,
-                                                        label: "Testing ${it}"
-                                                    )
-                                                } else {
-                                                    sh(
-                                                        script: """python --version
-                                                                   tox --installpkg=${it.path} -e py -vv
-                                                                   """,
-                                                        label: "Testing ${it}"
-                                                    )
-                                                }
+                                                sh(
+                                                    script: """python --version
+                                                               tox --installpkg=${it.path} -e py -vv
+                                                               """,
+                                                    label: "Testing ${it}"
+                                                )
                                             }
                                         }
                                     }
@@ -513,21 +504,12 @@ pipeline {
                                     script{
                                         findFiles(glob: "**/*.whl").each{
                                             timeout(15){
-                                                if(PLATFORM == "windows"){
-                                                    bat(
-                                                        script: """python --version
-                                                                   tox --installpkg=${it.path} -e py -vv
-                                                                   """,
-                                                        label: "Testing ${it}"
-                                                    )
-                                                } else {
-                                                    sh(
-                                                        script: """python --version
-                                                                   tox --installpkg=${it.path} -e py -vv
-                                                                   """,
-                                                        label: "Testing ${it}"
-                                                    )
-                                                }
+                                                sh(
+                                                    script: """python --version
+                                                               tox --installpkg=${it.path} -e py -vv
+                                                               """,
+                                                    label: "Testing ${it}"
+                                                )
                                             }
                                         }
                                     }
