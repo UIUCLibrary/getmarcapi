@@ -1,0 +1,12 @@
+bandit
+coverage
+devpi-client
+flake8
+mypy
+pep517
+pydocstyle
+pylint
+pytest
+sphinx
+sphinxcontrib.spelling
+tox
