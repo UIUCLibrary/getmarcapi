@@ -2,13 +2,19 @@ import pytest
 import getmarcapi
 from uiucprescon.getmarc2.records import RecordServer
 
+
 @pytest.fixture
 def client():
-    getmarcapi.app.config['testing'] = True
-    getmarcapi.app.config['domain'] = "testing"
-    getmarcapi.app.config['api_key'] = "NA"
-    with getmarcapi.app.test_client() as client:
+    app = getmarcapi.app
+    app.config['testing'] = True
+    app.config['API_DOMAIN'] = "testing"
+    app.config['API_KEY'] = "NA"
+
+    with app.test_client() as client:
         yield client
+
+    del app.config['API_DOMAIN']
+    del app.config['API_KEY']
 
 
 def test_root(client):

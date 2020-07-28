@@ -18,11 +18,11 @@ def get_record() -> Response:
         return Response("Missing required param bibid", status=422)
 
     get_config(app)
-    domain = app.config.get('domain')
+    domain = app.config.get('API_DOMAIN')
     if domain is None:
         return Response("Missing domain", status=500)
 
-    api_key = app.config.get('api_key')
+    api_key = app.config.get('API_KEY')
     if api_key is None:
         return Response("Missing api key", status=500)
 

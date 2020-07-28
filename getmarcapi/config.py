@@ -7,8 +7,8 @@ import configparser
 def get_config(app) -> None:
 
     keys: List[str] = [
-        "domain",
-        "api_key"
+        "API_DOMAIN",
+        "API_KEY"
     ]
     strategies: List[AbcConfigStrategy] = [
         EnvConfig(),
@@ -24,24 +24,36 @@ def get_config(app) -> None:
             continue
 
         for strategy in strategies:
-            app.config[k] = strategy.get_key(k)
+            value = ConfigLoader(strategy).get_config_value(k)
+            if value is not None:
+                app.config[k] = value
+                break
+        else:
+            app.config[k] = None
 
 
 class AbcConfigStrategy(abc.ABC):
     @abc.abstractmethod
-    def get_key(self, key: str) -> Optional[str]:
-        pass
+    def get_config_value(self, key: str) -> Optional[str]:
+        """ Get a value for a key given the type config entry
+
+        Args:
+            key: the key to look up
+
+        Returns:
+            Possible value for the given strategy
+        """
 
 
 class EnvConfig(AbcConfigStrategy):
 
     def __init__(self) -> None:
         self.configuration = {
-            "domain": os.environ.get('ALMA_DOMAIN'),
-            "api_key": os.environ.get('api_key')
+            "API_DOMAIN": os.environ.get('ALMA_API_DOMAIN'),
+            "API_KEY": os.environ.get('API_KEY')
         }
 
-    def get_key(self, key: str) -> Optional[str]:
+    def get_config_value(self, key: str) -> Optional[str]:
         return self.configuration.get(key)
 
 
@@ -53,7 +65,7 @@ class ConfigFile(AbcConfigStrategy):
         config.read(self.config_file)
         self.alma_api = config['ALMA_API']
 
-    def get_key(self, key: str) -> Optional[str]:
+    def get_config_value(self, key: str) -> Optional[str]:
         return self.alma_api.get(key)
 
 
@@ -62,6 +74,6 @@ class ConfigLoader:
     def __init__(self, strategy: AbcConfigStrategy) -> None:
         self.strategy = strategy
 
-    def get_key(self, key: str):
-        return self.strategy.get_key(key)
+    def get_config_value(self, key: str):
+        return self.strategy.get_config_value(key)
 
