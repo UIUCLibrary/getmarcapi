@@ -293,7 +293,12 @@ pipeline {
                     }
                     post{
                         always{
-                            sh "coverage combine && coverage xml -o reports/coverage.xml"
+                            sh(
+                                label: "Combining coverage results",
+                                script: '''coverage combine
+                                           coverage xml -o reports/coverage.xml
+                                           '''
+                            )
                             stash includes: "reports/coverage.xml", name: 'COVERAGE_REPORT'
                             publishCoverage adapters: [
                                             coberturaAdapter('reports/coverage.xml')
