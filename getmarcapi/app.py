@@ -59,13 +59,16 @@ def get_record() -> Response:
         return Response(f"Failed. {error}", 400, content_type="text")
 
 
-def main():
+def get_cli_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action='store_true')
-    args = parser.parse_args()
+    return parser
 
+
+def main():
     get_config(app)
 
+    args = get_cli_parser().parse_args()
     if args.check:
         sys.exit(1) if check_config(app) is False else sys.exit()
 
