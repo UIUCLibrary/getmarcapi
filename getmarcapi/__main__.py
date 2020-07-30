@@ -1,4 +1,4 @@
-"""Lounch the webservice."""
+"""Launch the webservice."""
 
 from getmarcapi.app import main
 
