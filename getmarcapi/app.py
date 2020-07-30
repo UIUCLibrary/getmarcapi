@@ -80,7 +80,7 @@ def main():
     if args.check:
         _check_only()
 
-    return app.run(debug=True)
+    return app.run()
 
 
 if __name__ == '__main__':
