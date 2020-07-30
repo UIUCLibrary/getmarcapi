@@ -50,15 +50,15 @@ def get_record() -> Response:
     api_key = app.config.get('API_KEY')
     if api_key is None:
         return Response("Missing api key", status=500)
-
+    bibid_value = str(bibid).strip()
     try:
         server = getmarc2.records.RecordServer(domain, api_key)
         data = server.bibid_record(bibid)
         header = {"x-api-version": "v1"}
-        app.logger.info(f"Retrieved record for bibid {bibid.strip()}")
+        app.logger.info(f"Retrieved record for bibid {bibid_value}")
         return Response(data, headers=header, content_type="text/xml")
     except AttributeError as error:
-        app.logger.info(f"Failed to retrieve bibid {bibid.strip()}")
+        app.logger.info(f"Failed to retrieve bibid {bibid_value}")
         return Response(f"Failed. {error}", 400, content_type="text")
 
 
