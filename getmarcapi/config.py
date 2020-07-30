@@ -27,6 +27,10 @@ def get_config(app) -> None:
         config_file = os.environ['GETMARCAPI_SETTINGS']
         if os.path.exists(config_file):
             strategies.append(ConfigFile(config_file))
+        else:
+            print(f"WARNING: Cannot load settings from GETMARCAPI_SETTINGS "
+                  f"environment variable. "
+                  f"Cannot locate {config_file}")
 
     for k in keys:
         if k in app.config and app.config[k] is not None:
