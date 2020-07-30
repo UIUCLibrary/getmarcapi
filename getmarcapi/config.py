@@ -4,6 +4,8 @@ import os
 from typing import Optional, List
 import configparser
 
+from getmarcapi import app
+
 
 def get_config(app) -> None:
     """Load the app with the correct configurations.
@@ -116,3 +118,17 @@ class ConfigLoader:
 
     def get_config_value(self, key: str):
         return self.strategy.get_config_value(key)
+
+
+def check_config(app_) -> bool:
+    app_.logger.debug("Checking API Domain")
+    domain = app_.config.get('API_DOMAIN')
+    if domain is None:
+        app_.logger.error("Missing domain")
+        return False
+    app_.logger.debug("Checking API key")
+    api_key = app_.config.get('API_KEY')
+    if api_key is None:
+        app_.logger.error("Missing api key")
+    app_.logger.info("Correctly configured")
+    return True

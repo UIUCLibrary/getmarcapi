@@ -68,3 +68,31 @@ def test_mixed_overwrite_config_loader(monkeypatch, tmpdir):
 
     assert app.config['API_DOMAIN'] == 'http://www.python.com'
     assert app.config['API_KEY'] == "spam"
+
+
+def test_check_empty_config():
+    app = getmarcapi.app
+    if "API_DOMAIN" in app.config:
+        del app.config['API_DOMAIN']
+
+    if 'API_KEY' in app.config:
+        del app.config['API_KEY']
+
+    assert getmarcapi.config.check_config(app) is False
+
+
+def test_check_env_config():
+    app = getmarcapi.app
+    app.config['API_DOMAIN'] = "http://www.fake.com"
+    app.config['API_KEY'] = "1234"
+
+    assert getmarcapi.config.check_config(app) is True
+
+
+def test_check_missing_api_key_config():
+    app = getmarcapi.app
+    app.config['API_DOMAIN'] = "http://www.fake.com"
+    if 'API_KEY' in app.config:
+        del app.config['API_KEY']
+
+    assert getmarcapi.config.check_config(app) is True

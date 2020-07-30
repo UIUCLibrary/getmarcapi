@@ -4,7 +4,7 @@ import sys
 import argparse
 from flask import Flask, Response, request
 from uiucprescon import getmarc2
-from .config import get_config
+from .config import get_config, check_config
 
 app = Flask(__name__)
 
@@ -62,19 +62,6 @@ def get_record() -> Response:
         return Response(f"Failed. {error}", 400, content_type="text")
 
 
-def _check_only():
-    app.logger.debug("Checking API Domain")
-    domain = app.config.get('API_DOMAIN')
-    if domain is None:
-        sys.exit("Missing domain")
-    app.logger.debug("Checking API key")
-    api_key = app.config.get('API_KEY')
-    if api_key is None:
-        sys.exit("Missing api key")
-    app.logger.info("Correctly configured")
-    exit()
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action='store_true')
@@ -83,7 +70,7 @@ def main():
     get_config(app)
 
     if args.check:
-        _check_only()
+        sys.exit(1) if check_config(app) is False else sys.exit()
 
     return app.run()
 
