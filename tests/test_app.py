@@ -9,7 +9,7 @@ def test_get_cli_check_parser():
     assert args.check is True
 
 
-def test_checks_exits(monkeypatch):
+def test_checks_arg_exits(monkeypatch):
     args = Mock(check=True)
     with pytest.raises(SystemExit):
         main(args)
