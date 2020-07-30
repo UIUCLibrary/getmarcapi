@@ -4,8 +4,6 @@ import os
 from typing import Optional, List
 import configparser
 
-from getmarcapi import app
-
 
 def get_config(app) -> None:
     """Load the app with the correct configurations.
@@ -30,9 +28,9 @@ def get_config(app) -> None:
         if os.path.exists(config_file):
             strategies.append(ConfigFile(config_file))
         else:
-            print(f"WARNING: Cannot load settings from GETMARCAPI_SETTINGS "
-                  f"environment variable. "
-                  f"Cannot locate {config_file}")
+            app.logger.warning(f"WARNING: Cannot load settings from "
+                               f"GETMARCAPI_SETTINGS environment variable. "
+                               f"Cannot locate {config_file}")
 
     for k in keys:
         if k in app.config and app.config[k] is not None:
