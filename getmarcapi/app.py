@@ -35,8 +35,9 @@ def get_record() -> Response:
     """
     bibid = request.args.get("bibid")
 
-    if bibid is None and len(str(bibid)) < 100:
-        return Response("Missing required param bibid", status=422)
+    if bibid is None or len(str(bibid)) > 100:
+        app.logger.debug(f"Invalid bibid request for {bibid}")
+        return Response("Missing or invalid required param bibid", status=422)
 
     get_config(app)
     domain = app.config.get('API_DOMAIN')
@@ -54,6 +55,7 @@ def get_record() -> Response:
         app.logger.info(f"Retrieved record for bibid {bibid}")
         return Response(data, headers=header, content_type="text/xml")
     except AttributeError as error:
+        app.logger.info(f"Failed to retrieve bibid {bibid}")
         return Response(f"Failed. {error}", 400, content_type="text")
 
 
