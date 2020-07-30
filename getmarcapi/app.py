@@ -39,9 +39,6 @@ def get_record() -> Response:
         app.logger.debug("Missing bibid request")
         return Response("Missing required param bibid", status=422)
 
-    if len(bibid) > 100:
-        return Response("Invalid required param bibid", status=422)
-
     get_config(app)
     domain = app.config.get('API_DOMAIN')
     if domain is None:
