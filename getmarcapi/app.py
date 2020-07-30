@@ -52,10 +52,10 @@ def get_record() -> Response:
         server = getmarc2.records.RecordServer(domain, api_key)
         data = server.bibid_record(bibid)
         header = {"x-api-version": "v1"}
-        app.logger.info(f"Retrieved record for bibid {bibid}")
+        app.logger.info(f"Retrieved record for bibid {bibid.strip()}")
         return Response(data, headers=header, content_type="text/xml")
     except AttributeError as error:
-        app.logger.info(f"Failed to retrieve bibid {bibid}")
+        app.logger.info(f"Failed to retrieve bibid {bibid.strip()}")
         return Response(f"Failed. {error}", 400, content_type="text")
 
 
