@@ -119,7 +119,7 @@ class ConfigLoader:
 
 
 def check_config(app) -> bool:
-    """Check if the app configuration is valid
+    """Check if the app configuration is valid.
 
     Args:
         app: App in question
