@@ -119,6 +119,15 @@ class ConfigLoader:
 
 
 def check_config(app) -> bool:
+    """Check if the app configuration is valid
+
+    Args:
+        app: App in question
+
+    Returns:
+        True if valid, else False
+
+    """
     app.logger.debug("Checking API Domain")
     domain = app.config.get('API_DOMAIN')
     if domain is None:
