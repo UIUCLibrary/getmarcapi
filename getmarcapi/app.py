@@ -65,10 +65,10 @@ def get_cli_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main():
+def main(args=None):
     get_config(app)
 
-    args = get_cli_parser().parse_args()
+    args = args or get_cli_parser().parse_args()
     if args.check:
         sys.exit(1) if check_config(app) is False else sys.exit()
 
