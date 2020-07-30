@@ -39,7 +39,7 @@ def get_record() -> Response:
         app.logger.debug(f"Missing bibid request")
         return Response("Missing required param bibid", status=422)
 
-    if bibid > 100:
+    if len(bibid) > 100:
         return Response("Invalid required param bibid", status=422)
 
     get_config(app)
