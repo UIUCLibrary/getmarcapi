@@ -36,7 +36,7 @@ def get_record() -> Response:
     bibid = request.args.get("bibid")
 
     if bibid is None:
-        app.logger.debug(f"Missing bibid request")
+        app.logger.debug("Missing bibid request")
         return Response("Missing required param bibid", status=422)
 
     if len(bibid) > 100:
