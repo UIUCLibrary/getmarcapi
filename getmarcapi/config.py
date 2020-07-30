@@ -118,15 +118,15 @@ class ConfigLoader:
         return self.strategy.get_config_value(key)
 
 
-def check_config(app_) -> bool:
-    app_.logger.debug("Checking API Domain")
-    domain = app_.config.get('API_DOMAIN')
+def check_config(app) -> bool:
+    app.logger.debug("Checking API Domain")
+    domain = app.config.get('API_DOMAIN')
     if domain is None:
-        app_.logger.error("Missing domain")
+        app.logger.error("Missing domain")
         return False
-    app_.logger.debug("Checking API key")
-    api_key = app_.config.get('API_KEY')
+    app.logger.debug("Checking API key")
+    api_key = app.config.get('API_KEY')
     if api_key is None:
-        app_.logger.error("Missing api key")
-    app_.logger.info("Correctly configured")
+        app.logger.error("Missing api key")
+    app.logger.info("Correctly configured")
     return True
