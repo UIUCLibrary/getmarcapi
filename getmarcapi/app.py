@@ -9,6 +9,7 @@ from . import config
 app = Flask(__name__)
 
 if __name__ != '__main__':
+    # pylint: disable=no-member
     gunicorn_logger = logging.getLogger('gunicorn.error')
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(logging.DEBUG)
@@ -36,7 +37,7 @@ def get_record() -> Response:
     bibid = request.args.get("bibid")
 
     if bibid is None:
-        app.logger.debug("Missing bibid request")
+        app.logger.debug("Missing bibid request")  # pylint: disable=no-member
         return Response("Missing required param bibid", status=422)
 
     config.get_config(app)
@@ -55,6 +56,7 @@ def get_record() -> Response:
         app.logger.info(f"Retrieved record for bibid {bibid_value}")
         return Response(data, headers=header, content_type="text/xml")
     except AttributeError as error:
+        # pylint: disable=no-member
         app.logger.info(f"Failed to retrieve bibid {bibid_value}")
         return Response(f"Failed. {error}", 400, content_type="text")
 
