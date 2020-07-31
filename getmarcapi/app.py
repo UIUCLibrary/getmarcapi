@@ -4,7 +4,8 @@ import sys
 import argparse
 from flask import Flask, Response, request
 from uiucprescon import getmarc2
-from .config import get_config, check_config
+# from .config import get_config, check_config
+from . import config
 
 app = Flask(__name__)
 
@@ -39,7 +40,7 @@ def get_record() -> Response:
         app.logger.debug("Missing bibid request")
         return Response("Missing required param bibid", status=422)
 
-    get_config(app)
+    config.get_config(app)
     domain = app.config.get('API_DOMAIN')
     if domain is None:
         return Response("Missing domain", status=500)
@@ -65,12 +66,16 @@ def get_cli_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(args=None):
-    get_config(app)
+def main(args=None, config_checker=None):
+    config.get_config(app)
 
     args = args or get_cli_parser().parse_args()
     if args.check:
-        sys.exit(1) if check_config(app) is False else sys.exit()
+        check_config = config_checker or config.check_config
+        if check_config(app) is False:
+            sys.exit(1)
+        else:
+            sys.exit(0)
 
     return app.run()
 
