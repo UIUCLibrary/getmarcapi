@@ -578,11 +578,16 @@ pipeline {
                         unstash "DOCS_ARCHIVE"
                         sh(
                             label: "Uploading to DevPi Staging",
-                            script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
-                                       devpi login $DEVPI_USR --password $DEVPI_PSW --clientdir ./devpi
-                                       devpi use /${env.DEVPI_USR}/${env.devpiStagingIndex} --clientdir ./devpi
-                                       devpi upload --from-dir dist --clientdir ./devpi"""
+                            script:"twine upload -r devpi-${env.devpiStagingIndex}-dev dist/*"
                         )
+
+//                         sh(
+//                             label: "Uploading to DevPi Staging",
+//                             script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
+//                                        devpi login $DEVPI_USR --password $DEVPI_PSW --clientdir ./devpi
+//                                        devpi use /${env.DEVPI_USR}/${env.devpiStagingIndex} --clientdir ./devpi
+//                                        devpi upload --from-dir dist --clientdir ./devpi"""
+//                         )
                     }
                 }
                 stage("Test DevPi Package") {
