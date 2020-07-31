@@ -1,4 +1,3 @@
-
 def getDevPiStagingIndex(){
 
     if (env.TAG_NAME?.trim()){
@@ -50,7 +49,7 @@ def devpiRunTest(pkgPropertiesFile, devpiIndex, devpiSelector, devpiUsername, de
 pipeline {
     agent none
     parameters {
-        booleanParam(name: "TEST_RUN_TOX", defaultValue: false, description: "Run Tox Tests")
+        booleanParam(name: "TEST_RUN_TOX", defaultValue: true, description: "Run Tox Tests")
         booleanParam(name: "USE_SONARQUBE", defaultValue: true, description: "Send data test data to SonarQube")
         booleanParam(name: "BUILD_PACKAGES", defaultValue: false, description: "Build Python packages")
         booleanParam(name: "DEPLOY_DEVPI", defaultValue: false, description: "Deploy to devpi on http://devpi.library.illinois.edu/DS_Jenkins/${env.BRANCH_NAME}")
@@ -182,27 +181,27 @@ pipeline {
 //                                 }
 //                             }
 //                         }
-//                         stage("pyDocStyle"){
-//                             steps{
-//                                 catchError(buildResult: 'SUCCESS', message: 'Did not pass all pyDocStyle tests', stageResult: 'UNSTABLE') {
-//                                     sh(
-//                                         label: "Run pydocstyle",
-//                                         script: '''mkdir -p reports
-//                                                    pydocstyle getmarcapi > reports/pydocstyle-report.txt
-//                                                    '''
-//                                     )
-//                                 }
-//                             }
-//                             post {
-//                                 always{
-//                                     recordIssues(tools: [pyDocStyle(pattern: 'reports/pydocstyle-report.txt')])
-//                                 }
-//                             }
-//                         }
+                        stage("pyDocStyle"){
+                            steps{
+                                catchError(buildResult: 'SUCCESS', message: 'Did not pass all pyDocStyle tests', stageResult: 'UNSTABLE') {
+                                    sh(
+                                        label: "Run pydocstyle",
+                                        script: '''mkdir -p reports
+                                                   pydocstyle getmarcapi > reports/pydocstyle-report.txt
+                                                   '''
+                                    )
+                                }
+                            }
+                            post {
+                                always{
+                                    recordIssues(tools: [pyDocStyle(pattern: 'reports/pydocstyle-report.txt')])
+                                }
+                            }
+                        }
                         stage("MyPy") {
                             steps{
                                 catchError(buildResult: 'SUCCESS', message: 'mypy found issues', stageResult: 'UNSTABLE') {
-                                    sh "mypy -p getmarcapi.getmarc2 --namespace-packages --html-report reports/mypy/html/  | tee logs/mypy.log"
+                                    sh "mypy -p getmarcapi --html-report reports/mypy/html/  > logs/mypy.log"
                                 }
                             }
                             post {
@@ -294,13 +293,20 @@ pipeline {
                     }
                     post{
                         always{
-                            sh "coverage combine && coverage xml -o reports/coverage.xml && coverage html -d reports/coverage"
-                            publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: false, reportDir: "reports/coverage", reportFiles: 'index.html', reportName: 'Coverage', reportTitles: ''])
-                            publishCoverage adapters: [
-                                            coberturaAdapter('reports/coverage.xml')
-                                            ],
-                                        sourceFileResolver: sourceFiles('STORE_ALL_BUILD')
+                            sh(
+                                label: "Combining coverage results",
+                                script: '''coverage combine
+                                           coverage xml -o reports/coverage.xml
+                                           '''
+                            )
                             stash includes: "reports/coverage.xml", name: 'COVERAGE_REPORT'
+                            publishCoverage(
+                                adapters: [
+                                    coberturaAdapter('reports/coverage.xml')
+                                ],
+                                sourceFileResolver: sourceFiles('STORE_ALL_BUILD')
+                            )
+
                         }
                         cleanup{
                             cleanWs(
@@ -308,7 +314,10 @@ pipeline {
                                 patterns: [
                                     [pattern: "dist/", type: 'INCLUDE'],
                                     [pattern: 'build/', type: 'INCLUDE'],
+                                    [pattern: '.coverage', type: 'INCLUDE'],
+                                    [pattern: '.eggs', type: 'INCLUDE'],
                                     [pattern: '.pytest_cache/', type: 'INCLUDE'],
+                                    [pattern: '**/__pycache__/', type: 'INCLUDE'],
                                     [pattern: '.mypy_cache/', type: 'INCLUDE'],
                                     [pattern: '.tox/', type: 'INCLUDE'],
                                     [pattern: 'getmarcapi1.stats', type: 'INCLUDE'],
@@ -332,78 +341,76 @@ pipeline {
                 }
             }
         }
-//         stage("Sonarcloud Analysis"){
-//             agent {
-//               dockerfile {
-//                 filename 'ci/docker/sonarcloud/Dockerfile'
-//                 label 'linux && docker'
-//               }
-//             }
-//             options{
-//                 lock("getmarcapi-sonarscanner")
-//             }
-//             when{
-//                 equals expected: true, actual: params.USE_SONARQUBE
-//                 beforeAgent true
-//                 beforeOptions true
-//             }
-//             steps{
-//                 checkout scm
-//                 sh "git fetch --all"
-//                 unstash "COVERAGE_REPORT"
-//                 unstash "PYTEST_REPORT"
-//                 unstash "BANDIT_REPORT"
-//                 unstash "PYLINT_REPORT"
-//                 unstash "FLAKE8_REPORT"
-//                 script{
-//                     withSonarQubeEnv(installationName:"sonarcloud", credentialsId: 'sonarcloud-getmarcapi') {
-//                         unstash "DIST-INFO"
-//                         def props = readProperties(interpolate: false, file: "getmarcapi.dist-info/METADATA")
-//                         if (env.CHANGE_ID){
-//                             sh(
-//                                 label: "Running Sonar Scanner",
-//                                 script:"sonar-scanner -Dsonar.projectVersion=${props.Version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.CHANGE_TARGET}"
-//                                 )
-//                         } else {
-//                             sh(
-//                                 label: "Running Sonar Scanner",
-//                                 script: "sonar-scanner -Dsonar.projectVersion=${props.Version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.branch.name=${env.BRANCH_NAME}"
-//                                 )
-//                         }
-//                     }
-//                     timeout(time: 1, unit: 'HOURS') {
-//                         def sonarqube_result = waitForQualityGate(abortPipeline: false)
-//                         if (sonarqube_result.status != 'OK') {
-//                             unstable "SonarQube quality gate: ${sonarqube_result.status}"
-//                         }
-//                         def outstandingIssues = get_sonarqube_unresolved_issues(".scannerwork/report-task.txt")
-//                         writeJSON file: 'reports/sonar-report.json', json: outstandingIssues
-//                     }
-//                 }
-//             }
-//             post {
-//                 always{
-//                     script{
-//                         if(fileExists('reports/sonar-report.json')){
-//                             stash includes: "reports/sonar-report.json", name: 'SONAR_REPORT'
-//                             archiveArtifacts allowEmptyArchive: true, artifacts: 'reports/sonar-report.json'
-//                             recordIssues(tools: [sonarQube(pattern: 'reports/sonar-report.json')])
-//                         }
-//                     }
-//                 }
-//                 cleanup{
-//                     cleanWs(
-//                         deleteDirs: true,
-//                         patterns: [
-//                             [pattern: 'reports/', type: 'INCLUDE'],
-//                             [pattern: 'logs/', type: 'INCLUDE'],
-//                             [pattern: 'getmarcapi.dist-info/', type: 'INCLUDE'],
-//                             [pattern: '.scannerwork/', type: 'INCLUDE'],
-//                         ]
-//                     )
-//                 }
-//             }
-//         }
+        stage("Sonarcloud Analysis"){
+            agent {
+              dockerfile {
+                filename 'ci/docker/sonarcloud/Dockerfile'
+                label 'linux && docker'
+              }
+            }
+            options{
+                lock("getmarcapi-sonarscanner")
+            }
+            when{
+                equals expected: true, actual: params.USE_SONARQUBE
+                beforeAgent true
+                beforeOptions true
+            }
+            steps{
+                unstash "COVERAGE_REPORT"
+                unstash "PYTEST_REPORT"
+                unstash "BANDIT_REPORT"
+                unstash "PYLINT_REPORT"
+                unstash "FLAKE8_REPORT"
+                script{
+                    withSonarQubeEnv(installationName:"sonarcloud", credentialsId: 'sonarcloud-getmarcapi') {
+                        unstash "DIST-INFO"
+                        def props = readProperties(interpolate: false, file: "getmarcapi.dist-info/METADATA")
+                        if (env.CHANGE_ID){
+                            sh(
+                                label: "Running Sonar Scanner",
+                                script:"sonar-scanner -Dsonar.projectVersion=${props.Version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.CHANGE_TARGET}"
+                                )
+                        } else {
+                            sh(
+                                label: "Running Sonar Scanner",
+                                script: "sonar-scanner -Dsonar.projectVersion=${props.Version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.branch.name=${env.BRANCH_NAME}"
+                                )
+                        }
+                    }
+                    timeout(time: 1, unit: 'HOURS') {
+                        def sonarqube_result = waitForQualityGate(abortPipeline: false)
+                        if (sonarqube_result.status != 'OK') {
+                            unstable "SonarQube quality gate: ${sonarqube_result.status}"
+                        }
+                        def outstandingIssues = get_sonarqube_unresolved_issues(".scannerwork/report-task.txt")
+                        writeJSON file: 'reports/sonar-report.json', json: outstandingIssues
+                    }
+                }
+            }
+            post {
+                always{
+                    script{
+                        if(fileExists('reports/sonar-report.json')){
+                            stash includes: "reports/sonar-report.json", name: 'SONAR_REPORT'
+                            archiveArtifacts allowEmptyArchive: true, artifacts: 'reports/sonar-report.json'
+                            recordIssues(tools: [sonarQube(pattern: 'reports/sonar-report.json')])
+                        }
+                    }
+                }
+                cleanup{
+                    cleanWs(
+                        deleteDirs: true,
+                        patterns: [
+                            [pattern: 'reports/', type: 'INCLUDE'],
+                            [pattern: 'logs/', type: 'INCLUDE'],
+                            [pattern: 'getmarcapi.dist-info/', type: 'INCLUDE'],
+                            [pattern: '.scannerwork/', type: 'INCLUDE'],
+                        ]
+                    )
+                }
+            }
+        }
         stage("Distribution Packages"){
             when{
                 anyOf{
@@ -419,6 +426,7 @@ pipeline {
                         dockerfile {
                             filename 'ci/docker/python/linux/Dockerfile'
                             label 'linux && docker'
+                            additionalBuildArgs "--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
                         }
                     }
                     steps {
@@ -447,13 +455,6 @@ pipeline {
                     matrix{
                         axes{
                             axis {
-                                name "PLATFORM"
-                                values(
-//                                     "windows",
-                                    "linux"
-                                )
-                            }
-                            axis {
                                 name "PYTHON_VERSION"
                                 values(
                                     "3.7",
@@ -463,8 +464,8 @@ pipeline {
                         }
                         agent {
                             dockerfile {
-                                filename "ci/docker/python/${PLATFORM}/Dockerfile"
-                                label "${PLATFORM} && docker"
+                                filename "ci/docker/python/linux/Dockerfile"
+                                label "linux && docker"
                                 additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
                             }
                         }
@@ -478,21 +479,12 @@ pipeline {
                                     script{
                                         findFiles(glob: "**/*.tar.gz").each{
                                             timeout(15){
-                                                if(PLATFORM == "windows"){
-                                                    bat(
-                                                        script: """python --version
-                                                                   tox --installpkg=${it.path} -e py -vv
-                                                                   """,
-                                                        label: "Testing ${it}"
-                                                    )
-                                                } else {
-                                                    sh(
-                                                        script: """python --version
-                                                                   tox --installpkg=${it.path} -e py -vv
-                                                                   """,
-                                                        label: "Testing ${it}"
-                                                    )
-                                                }
+                                                sh(
+                                                    script: """python --version
+                                                               tox --installpkg=${it.path} -e py -vv
+                                                               """,
+                                                    label: "Testing ${it}"
+                                                )
                                             }
                                         }
                                     }
@@ -504,9 +496,10 @@ pipeline {
                                             deleteDirs: true,
                                             patterns: [
                                                 [pattern: 'dist/', type: 'INCLUDE'],
+                                                [pattern: 'tests/__pycache__/', type: 'INCLUDE'],
                                                 [pattern: 'build/', type: 'INCLUDE'],
                                                 [pattern: '.tox/', type: 'INCLUDE'],
-                                                ]
+                                            ]
                                         )
                                     }
                                 }
@@ -520,21 +513,12 @@ pipeline {
                                     script{
                                         findFiles(glob: "**/*.whl").each{
                                             timeout(15){
-                                                if(PLATFORM == "windows"){
-                                                    bat(
-                                                        script: """python --version
-                                                                   tox --installpkg=${it.path} -e py -vv
-                                                                   """,
-                                                        label: "Testing ${it}"
-                                                    )
-                                                } else {
-                                                    sh(
-                                                        script: """python --version
-                                                                   tox --installpkg=${it.path} -e py -vv
-                                                                   """,
-                                                        label: "Testing ${it}"
-                                                    )
-                                                }
+                                                sh(
+                                                    script: """python --version
+                                                               tox --installpkg=${it.path} -e py -vv
+                                                               """,
+                                                    label: "Testing ${it}"
+                                                )
                                             }
                                         }
                                     }
@@ -546,9 +530,10 @@ pipeline {
                                             deleteDirs: true,
                                             patterns: [
                                                 [pattern: 'dist/', type: 'INCLUDE'],
+                                                [pattern: 'tests/__pycache__/', type: 'INCLUDE'],
                                                 [pattern: 'build/', type: 'INCLUDE'],
                                                 [pattern: '.tox/', type: 'INCLUDE'],
-                                                ]
+                                            ]
                                         )
                                     }
                                 }
@@ -585,7 +570,7 @@ pipeline {
                         dockerfile {
                             filename 'ci/docker/python/linux/Dockerfile'
                             label 'linux && docker'
-                            additionalBuildArgs '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)'
+                            additionalBuildArgs "--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
                           }
                     }
                     steps {
@@ -604,13 +589,6 @@ pipeline {
                     matrix {
                         axes {
                             axis {
-                                name 'PLATFORM'
-                                values(
-                                    "linux",
-//                                     "windows"
-                                )
-                            }
-                            axis {
                                 name 'PYTHON_VERSION'
                                 values '3.7', '3.8'
                             }
@@ -620,8 +598,8 @@ pipeline {
                             stage("Testing DevPi wheel Package"){
                                 agent {
                                     dockerfile {
-                                        filename "ci/docker/python/${PLATFORM}/Dockerfile"
-                                        label "${PLATFORM} && docker"
+                                        filename "ci/docker/python/linux/Dockerfile"
+                                        label "linux && docker"
                                         additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
                                     }
                                 }
@@ -645,8 +623,8 @@ pipeline {
                             stage("Testing DevPi sdist Package"){
                                 agent {
                                     dockerfile {
-                                        filename "ci/docker/python/${PLATFORM}/Dockerfile"
-                                        label "${PLATFORM} && docker"
+                                        filename "ci/docker/python/linux/Dockerfile"
+                                        label "linux && docker"
                                         additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
                                     }
                                 }

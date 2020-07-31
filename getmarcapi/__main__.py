@@ -1,3 +1,6 @@
-from getmarcapi.app import app
+"""Launch the webservice."""
 
-app.run(host='0.0.0.0')
+from getmarcapi.app import main
+
+if __name__ == '__main__':
+    main()

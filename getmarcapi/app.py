@@ -1,37 +1,98 @@
-import os
-
+"""Main app module for loading the routes."""
+import logging
+import sys
+import argparse
 from flask import Flask, Response, request
 from uiucprescon import getmarc2
+from . import config
+
 app = Flask(__name__)
+
+if __name__ != '__main__':
+    # pylint: disable=no-member
+    gunicorn_logger = logging.getLogger('gunicorn.error')
+    app.logger.handlers = gunicorn_logger.handlers
+    app.logger.setLevel(logging.DEBUG)
+    app.logger.setLevel(gunicorn_logger.level)
 
 
 @app.route('/', methods=['GET'])
 def index() -> str:
-    return "Sample"
+    """Root page of the api. Something will go here sometime.
+
+    Returns:
+        Nothing really goes here yet
+    """
+    return "Sample!"
 
 
 @app.route('/record')
 def get_record() -> Response:
+    """Get the record data for a given bibid.
+
+    Returns:
+        XML data
+
+    """
     bibid = request.args.get("bibid")
+
     if bibid is None:
+        app.logger.debug("Missing bibid request")  # pylint: disable=no-member
         return Response("Missing required param bibid", status=422)
-    domain = os.environ.get('domain')
+
+    config.get_config(app)
+    domain = app.config.get('API_DOMAIN')
     if domain is None:
         return Response("Missing domain", status=500)
 
-    api_key = os.environ.get('api_key')
+    api_key = app.config.get('API_KEY')
     if api_key is None:
         return Response("Missing api key", status=500)
+    bibid_value = str(bibid).strip()
     try:
         server = getmarc2.records.RecordServer(domain, api_key)
         data = server.bibid_record(bibid)
         header = {"x-api-version": "v1"}
+        app.logger.info(f"Retrieved record for bibid {bibid_value}")
         return Response(data, headers=header, content_type="text/xml")
-    except AttributeError as e:
-        return Response(f"Failed. {e}", 400, content_type="text")
+    except AttributeError as error:
+        # pylint: disable=no-member
+        app.logger.info(f"Failed to retrieve bibid {bibid_value}")
+        return Response(f"Failed. {error}", 400, content_type="text")
 
-# TODO: load configuration
+
+def get_cli_parser() -> argparse.ArgumentParser:
+    """Get the parser for command line arguments.
+
+    Returns:
+        Parser for cli args
+
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--check", action='store_true')
+    return parser
+
+
+def main(args=None, config_checker=None) -> None:
+    """Run the main entry point for the CLI.
+
+    Args:
+        args: Command line Arguments
+        config_checker: Checker for validating configuration
+
+    """
+    config.get_config(app)
+
+    args = args or get_cli_parser().parse_args()
+    if args.check:
+        check_config = config_checker or config.check_config
+        if check_config(app) is False:
+            sys.exit(1)
+        else:
+            sys.exit(0)
+
+    app.run()
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0')
+    main()
