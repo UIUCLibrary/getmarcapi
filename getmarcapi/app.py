@@ -74,7 +74,7 @@ def get_cli_parser() -> argparse.ArgumentParser:
 
 
 def main(args=None, config_checker=None) -> None:
-    """Main entry point for the CLI.
+    """Runs the main entry point for the CLI.
 
     Args:
         args: Command line Arguments
