@@ -22,7 +22,7 @@ ARG GROUP_ID=1000
 
 RUN groupadd -g $GROUP_ID user && \
     useradd -u $USER_ID -s /bin/sh -m -d /home/user -g user user
-
+COPY --chown=user=user ci/docker/python/shared/.pypirc /home/user/
 COPY --from=wheel_builder /wheels /wheels/
 ADD ci/docker/python/shared/requirements-ci.txt /tmp/
 ENV PIP_FIND_LINKS=/wheels
