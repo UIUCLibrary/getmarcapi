@@ -1,6 +1,7 @@
+import flask
 import pytest
 import getmarcapi
-from uiucprescon.getmarc2.records import RecordServer
+import uiucprescon.getmarc2.records
 
 
 @pytest.fixture
@@ -25,7 +26,7 @@ def test_root(client):
 def test_get_record_xml(monkeypatch, client):
     def mock_response(self, bibid, *args, **kwargs):
         return ""
-    monkeypatch.setattr(RecordServer, "bibid_record", mock_response)
+    monkeypatch.setattr(uiucprescon.getmarc2.records.RecordServer, "bibid_record", mock_response)
     rc = client.get('/record?bibid=12345')
     assert rc.status_code == 200
     assert rc.content_type == 'text/xml'

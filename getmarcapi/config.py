@@ -27,6 +27,10 @@ def get_config(app) -> None:
         config_file = os.environ['GETMARCAPI_SETTINGS']
         if os.path.exists(config_file):
             strategies.append(ConfigFile(config_file))
+        else:
+            app.logger.warning(f"WARNING: Cannot load settings from "
+                               f"GETMARCAPI_SETTINGS environment variable. "
+                               f"Cannot locate {config_file}")
 
     for k in keys:
         if k in app.config and app.config[k] is not None:
@@ -112,3 +116,26 @@ class ConfigLoader:
 
     def get_config_value(self, key: str):
         return self.strategy.get_config_value(key)
+
+
+def check_config(app) -> bool:
+    """Check if the app configuration is valid.
+
+    Args:
+        app: App in question
+
+    Returns:
+        True if valid, else False
+
+    """
+    app.logger.debug("Checking API Domain")
+    domain = app.config.get('API_DOMAIN')
+    if domain is None:
+        app.logger.error("Missing domain")
+        return False
+    app.logger.debug("Checking API key")
+    api_key = app.config.get('API_KEY')
+    if api_key is None:
+        app.logger.error("Missing api key")
+    app.logger.info("Correctly configured")
+    return True
