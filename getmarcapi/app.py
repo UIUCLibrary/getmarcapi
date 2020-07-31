@@ -4,7 +4,6 @@ import sys
 import argparse
 from flask import Flask, Response, request
 from uiucprescon import getmarc2
-# from .config import get_config, check_config
 from . import config
 
 app = Flask(__name__)
