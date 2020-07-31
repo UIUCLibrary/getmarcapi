@@ -60,12 +60,25 @@ def get_record() -> Response:
 
 
 def get_cli_parser() -> argparse.ArgumentParser:
+    """Get the parser for command line arguments.
+
+    Returns:
+        Parser for cli args
+
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action='store_true')
     return parser
 
 
-def main(args=None, config_checker=None):
+def main(args=None, config_checker=None) -> None:
+    """Main entry point for the CLI.
+
+    Args:
+        args: Command line Arguments
+        config_checker: Checker for validating configuration
+
+    """
     config.get_config(app)
 
     args = args or get_cli_parser().parse_args()
@@ -76,7 +89,7 @@ def main(args=None, config_checker=None):
         else:
             sys.exit(0)
 
-    return app.run()
+    app.run()
 
 
 if __name__ == '__main__':
