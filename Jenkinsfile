@@ -26,8 +26,7 @@ def devpiRunTest(pkgPropertiesFile, devpiIndex, devpiSelector, devpiUsername, de
         if (isUnix()){
             sh(
                 label: "Running test",
-                script: """ls -la
-                           devpi use https://devpi.library.illinois.edu --clientdir certs/
+                script: """devpi use https://devpi.library.illinois.edu --clientdir certs/
                            devpi login ${devpiUsername} --password ${devpiPassword} --clientdir certs/
                            devpi use ${devpiIndex} --clientdir certs/
                            devpi test --index ${devpiIndex} ${props.Name}==${props.Version} -s ${devpiSelector} --clientdir certs/ -e ${toxEnv} --tox-args=\"-vv\"
@@ -670,7 +669,7 @@ pipeline {
                         dockerfile {
                             filename 'ci/docker/python/linux/Dockerfile'
                             label 'linux && docker'
-                            additionalBuildArgs '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)'
+                            additionalBuildArgs '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release'
                         }
                     }
                     steps {
@@ -693,7 +692,7 @@ pipeline {
                     node('linux && docker') {
                        script{
                             if (!env.TAG_NAME?.trim()){
-                                docker.build("getmarc:devpi",'-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) .').inside{
+                                docker.build("getmarc:devpi",'-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release .').inside{
                                     unstash "DIST-INFO"
                                     def props = readProperties interpolate: true, file: 'getmarcapi.dist-info/METADATA'
                                     sh(
@@ -712,7 +711,7 @@ pipeline {
                 cleanup{
                     node('linux && docker') {
                        script{
-                            docker.build("getmarc:devpi",'-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) .').inside{
+                            docker.build("getmarc:devpi",'-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release .').inside{
                                 unstash "DIST-INFO"
                                 def props = readProperties interpolate: true, file: 'getmarcapi.dist-info/METADATA'
                                 sh(
