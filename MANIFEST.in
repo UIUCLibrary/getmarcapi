@@ -6,3 +6,6 @@ include README.rst
 
 # Tox configuration setting
 include tox.ini
+
+# Pytest tests
+recursive-include tests *.py
