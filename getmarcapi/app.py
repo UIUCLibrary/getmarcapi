@@ -4,6 +4,8 @@ import sys
 import argparse
 from flask import Flask, Response, request
 from uiucprescon import getmarc2
+from uiucprescon.getmarc2 import modifiers
+
 from . import config
 
 app = Flask(__name__)
@@ -54,6 +56,14 @@ def get_record() -> Response:
         data = server.bibid_record(bibid)
         header = {"x-api-version": "v1"}
         app.logger.info(f"Retrieved record for bibid {bibid_value}")
+
+        field_adder = modifiers.Add955()
+        field_adder.bib_id = bibid
+        if "v" in bibid:
+            field_adder.contains_v = True
+
+        data = field_adder.enrich(data)
+
         return Response(data, headers=header, content_type="text/xml")
     except AttributeError as error:
         # pylint: disable=no-member
