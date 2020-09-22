@@ -1,0 +1,8 @@
+# License file
+# include LICENSE
+
+# README and the files it references
+include README.rst
+
+# Tox configuration setting
+include tox.ini
