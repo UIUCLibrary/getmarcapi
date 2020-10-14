@@ -19,7 +19,6 @@ def get_sonarqube_unresolved_issues(report_task_file){
     }
 }
 
-
 def devpiRunTest(pkgPropertiesFile, devpiIndex, devpiSelector, devpiUsername, devpiPassword, toxEnv){
     script{
         def props = readProperties interpolate: false, file: pkgPropertiesFile
