@@ -37,7 +37,6 @@ def get_record() -> Response:
         XML data
 
     """
-
     bibid = request.args.get("bibid")
 
     if bibid is None:
