@@ -44,8 +44,47 @@ def devpiRunTest(pkgPropertiesFile, devpiIndex, devpiSelector, devpiUsername, de
         }
     }
 }
-
-
+def startup(){
+    stage("Getting Distribution Info"){
+        node('linux && docker') {
+            docker.image('python:3.8').inside {
+                timeout(2){
+                    try{
+                        checkout scm
+                        sh(
+                           label: "Running setup.py with dist_info",
+                           script: """python --version
+                                      python setup.py dist_info
+                                   """
+                        )
+                        stash includes: "*.dist-info/**", name: 'DIST-INFO'
+                        archiveArtifacts artifacts: "*.dist-info/**"
+                    } finally{
+                        deleteDir()
+                    }
+                }
+            }
+        }
+    }
+}
+def get_props(metadataFile){
+    stage("Reading Package Metadata"){
+        node() {
+            try{
+                unstash "DIST-INFO"
+                def props = readProperties interpolate: true, file: metadataFile
+                return props
+            } finally {
+                deleteDir()
+            }
+        }
+    }
+}
+startup()
+def props = get_props("getmarcapi.dist-info/METADATA")
+def DEFAULT_DOCKER_AGENT_FILENAME = 'ci/docker/python/linux/Dockerfile'
+def DEFAULT_DOCKER_AGENT_LABELS = 'linux && docker'
+def DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release --build-arg PIP_EXTRA_INDEX_URL'
 pipeline {
     agent none
     parameters {
@@ -57,30 +96,19 @@ pipeline {
         booleanParam(name: 'DEPLOY_DOCS', defaultValue: false, description: '')
     }
     stages {
-        stage("Getting Distribution Info"){
+        stage("Getting Testing Environment Info"){
             agent {
                 dockerfile {
-                    filename 'ci/docker/python/linux/Dockerfile'
-                    label 'linux && docker'
-                    additionalBuildArgs '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release'
+                    filename DEFAULT_DOCKER_AGENT_FILENAME
+                    label DEFAULT_DOCKER_AGENT_LABELS
+                    additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                 }
             }
             steps{
                 timeout(5){
-                    sh "python setup.py dist_info"
-                }
-            }
-            post{
-                success{
-                    stash includes: "getmarcapi.dist-info/**", name: 'DIST-INFO'
-                    archiveArtifacts artifacts: "getmarcapi.dist-info/**"
-                }
-                cleanup{
-                    cleanWs(
-                        deleteDirs: true,
-                        patterns: [
-                            [pattern: "getmarcapi.dist-info/", type: 'INCLUDE'],
-                            ]
+                    sh(
+                        label: "Checking Installed Python Packages",
+                        script: "python -m pip list"
                     )
                 }
             }
@@ -131,9 +159,9 @@ pipeline {
         stage("Checks") {
             agent {
                 dockerfile {
-                    filename 'ci/docker/python/linux/Dockerfile'
-                    label 'linux && docker'
-                    additionalBuildArgs "--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
+                    filename DEFAULT_DOCKER_AGENT_FILENAME
+                    label DEFAULT_DOCKER_AGENT_LABELS
+                    additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                 }
             }
             stages{
@@ -344,9 +372,9 @@ pipeline {
         stage("Sonarcloud Analysis"){
             agent {
                 dockerfile {
-                    filename 'ci/docker/python/linux/Dockerfile'
-                    label 'linux && docker'
-                    additionalBuildArgs '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release'
+                    filename DEFAULT_DOCKER_AGENT_FILENAME
+                    label DEFAULT_DOCKER_AGENT_LABELS
+                    additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                     args '--mount source=sonar-cache-getmarcapi,target=/home/user/.sonar/cache'
                 }
             }
@@ -366,8 +394,8 @@ pipeline {
                 unstash "FLAKE8_REPORT"
                 script{
                     withSonarQubeEnv(installationName:"sonarcloud", credentialsId: 'sonarcloud-getmarcapi') {
-                        unstash "DIST-INFO"
-                        def props = readProperties(interpolate: false, file: "getmarcapi.dist-info/METADATA")
+//                         unstash "DIST-INFO"
+//                         def props = readProperties(interpolate: false, file: "getmarcapi.dist-info/METADATA")
                         if (env.CHANGE_ID){
                             sh(
                                 label: "Running Sonar Scanner",
@@ -426,9 +454,9 @@ pipeline {
                 stage("Creating Package") {
                     agent {
                         dockerfile {
-                            filename 'ci/docker/python/linux/Dockerfile'
-                            label 'linux && docker'
-                            additionalBuildArgs "--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
+                            filename DEFAULT_DOCKER_AGENT_FILENAME
+                            label DEFAULT_DOCKER_AGENT_LABELS
+                            additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                         }
                     }
                     steps {
@@ -466,8 +494,8 @@ pipeline {
                         }
                         agent {
                             dockerfile {
-                                filename "ci/docker/python/linux/Dockerfile"
-                                label "linux && docker"
+                                filename DEFAULT_DOCKER_AGENT_FILENAME
+                                label DEFAULT_DOCKER_AGENT_LABELS
                                 additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
                             }
                         }
@@ -568,12 +596,12 @@ pipeline {
             }
             stages{
                 stage("Deploy to Devpi Staging") {
-                    agent {
+                    agent{
                         dockerfile {
-                            filename 'ci/docker/python/linux/Dockerfile'
-                            label 'linux && docker'
-                            additionalBuildArgs "--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
-                          }
+                            filename DEFAULT_DOCKER_AGENT_FILENAME
+                            label DEFAULT_DOCKER_AGENT_LABELS
+                            additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+                        }
                     }
                     steps {
                         unstash "PYTHON_PACKAGES"
@@ -600,8 +628,8 @@ pipeline {
                             stage("Testing DevPi wheel Package"){
                                 agent {
                                     dockerfile {
-                                        filename "ci/docker/python/linux/Dockerfile"
-                                        label "linux && docker"
+                                        filename DEFAULT_DOCKER_AGENT_FILENAME
+                                        label DEFAULT_DOCKER_AGENT_LABELS
                                         additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
                                     }
                                 }
@@ -625,8 +653,8 @@ pipeline {
                             stage("Testing DevPi sdist Package"){
                                 agent {
                                     dockerfile {
-                                        filename "ci/docker/python/linux/Dockerfile"
-                                        label "linux && docker"
+                                        filename DEFAULT_DOCKER_AGENT_FILENAME
+                                        label DEFAULT_DOCKER_AGENT_LABELS
                                         additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
                                     }
                                 }
@@ -669,15 +697,15 @@ pipeline {
                     }
                     agent {
                         dockerfile {
-                            filename 'ci/docker/python/linux/Dockerfile'
-                            label 'linux && docker'
-                            additionalBuildArgs '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release'
+                            filename DEFAULT_DOCKER_AGENT_FILENAME
+                            label DEFAULT_DOCKER_AGENT_LABELS
+                            additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                         }
                     }
                     steps {
                         script {
-                            unstash "DIST-INFO"
-                            def props = readProperties interpolate: true, file: 'getmarcapi.dist-info/METADATA'
+//                             unstash "DIST-INFO"
+//                             def props = readProperties interpolate: true, file: 'getmarcapi.dist-info/METADATA'
                             sh(
                                 label: "Pushing to production/release index",
                                 script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
@@ -695,8 +723,8 @@ pipeline {
                        script{
                             if (!env.TAG_NAME?.trim()){
                                 docker.build("getmarc:devpi",'-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release .').inside{
-                                    unstash "DIST-INFO"
-                                    def props = readProperties interpolate: true, file: 'getmarcapi.dist-info/METADATA'
+//                                     unstash "DIST-INFO"
+//                                     def props = readProperties interpolate: true, file: 'getmarcapi.dist-info/METADATA'
                                     sh(
                                         label: "Moving DevPi package from staging index to index",
                                         script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
@@ -714,8 +742,8 @@ pipeline {
                     node('linux && docker') {
                        script{
                             docker.build("getmarc:devpi",'-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release .').inside{
-                                unstash "DIST-INFO"
-                                def props = readProperties interpolate: true, file: 'getmarcapi.dist-info/METADATA'
+//                                 unstash "DIST-INFO"
+//                                 def props = readProperties interpolate: true, file: 'getmarcapi.dist-info/METADATA'
                                 sh(
                                     label: "Removing Package from DevPi staging index",
                                     script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi

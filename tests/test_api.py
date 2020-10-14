@@ -22,9 +22,8 @@ def test_root(client):
     rc = client.get('/')
     assert rc.status_code == 200
 
-
 def test_get_record_xml(monkeypatch, client):
-    def mock_response(self, bibid, *args, **kwargs):
+    def mock_get_record_response(self, identifier, identifier_type):
         mock_xml_record = """
         <record xmlns="http://www.loc.gov/MARC21/slim" 
                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
@@ -34,8 +33,9 @@ def test_get_record_xml(monkeypatch, client):
         </record>
         """
         return mock_xml_record
-    monkeypatch.setattr(uiucprescon.getmarc2.records.RecordServer, "bibid_record", mock_response)
-    rc = client.get('/record?bibid=12345')
+
+    monkeypatch.setattr(uiucprescon.getmarc2.records.RecordServer, "get_record", mock_get_record_response)
+    rc = client.get('/record?bib_id=12345')
     assert rc.status_code == 200
     assert rc.content_type == 'text/xml'
 
