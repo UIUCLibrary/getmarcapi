@@ -2,7 +2,7 @@
 import logging
 import sys
 import argparse
-from collections import Mapping
+from collections.abc import Mapping
 from typing import Tuple, Optional
 
 from flask import Flask, Response, request
