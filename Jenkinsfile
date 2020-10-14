@@ -158,6 +158,10 @@ pipeline {
 //                 }
 //             }
         stage("Checks") {
+            when{
+                equals expected: true, actual: params.RUN_CHECKS
+                beforeAgent true
+            }
             agent {
                 dockerfile {
                     filename DEFAULT_DOCKER_AGENT_FILENAME
