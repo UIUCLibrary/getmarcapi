@@ -94,34 +94,23 @@ pipeline {
         booleanParam(name: 'DEPLOY_DOCS', defaultValue: false, description: '')
     }
     stages {
-//         stage("Getting Distribution Info"){
-//             agent {
-//                 dockerfile {
-//                     filename 'ci/docker/python/linux/Dockerfile'
-//                     label 'linux && docker'
-//                     additionalBuildArgs '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release'
-//                 }
-//             }
-//             steps{
-//                 timeout(5){
-//                     sh "python setup.py dist_info"
-//                 }
-//             }
-//             post{
-//                 success{
-//                     stash includes: "getmarcapi.dist-info/**", name: 'DIST-INFO'
-//                     archiveArtifacts artifacts: "getmarcapi.dist-info/**"
-//                 }
-//                 cleanup{
-//                     cleanWs(
-//                         deleteDirs: true,
-//                         patterns: [
-//                             [pattern: "getmarcapi.dist-info/", type: 'INCLUDE'],
-//                             ]
-//                     )
-//                 }
-//             }
-//         }
+        stage("Getting Testing Environment Info"){
+            agent {
+                dockerfile {
+                    filename 'ci/docker/python/linux/Dockerfile'
+                    label 'linux && docker'
+                    additionalBuildArgs '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release'
+                }
+            }
+            steps{
+                timeout(5){
+                    sh(
+                        label: "Checking Installed Python Packages",
+                        script: "python -m pip list"
+                    )
+                }
+            }
+        }
 //         stage("Sphinx Documentation"){
 //             agent{
 //                 dockerfile {
