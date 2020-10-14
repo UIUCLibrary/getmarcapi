@@ -73,6 +73,10 @@ class RecordGetter:
                 "args provided is unable to determine what type strategy"
             )
 
+    def __str__(self) -> str:
+        return \
+            f"{self.__repr__()} {self._strategy.__class__.__name__} strategy"
+
     @staticmethod
     def _get_strategy(args: Mapping) -> Optional[AbsRecordStrategy]:
         # todo: _get_strategy
@@ -90,9 +94,7 @@ class RecordGetter:
             MARC xml record
 
         """
-        if self._strategy is None:
-            raise TypeError("No valid strategy to get record")
-
+        assert self._strategy is not None
         record = self._strategy.get_record(server, identifier)
         if record is None:
             raise ValueError(
