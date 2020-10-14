@@ -82,7 +82,9 @@ def get_props(metadataFile){
 }
 startup()
 def props = get_props("getmarcapi.dist-info/METADATA")
-
+def DEFAULT_DOCKER_AGENT_FILENAME = 'ci/docker/python/linux/Dockerfile'
+def DEFAULT_DOCKER_AGENT_LABELS = 'linux && docker'
+def DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release'
 pipeline {
     agent none
     parameters {
@@ -97,9 +99,9 @@ pipeline {
         stage("Getting Testing Environment Info"){
             agent {
                 dockerfile {
-                    filename 'ci/docker/python/linux/Dockerfile'
-                    label 'linux && docker'
-                    additionalBuildArgs '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release'
+                    filename DEFAULT_DOCKER_AGENT_FILENAME
+                    label DEFAULT_DOCKER_AGENT_LABELS
+                    additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                 }
             }
             steps{
