@@ -31,7 +31,17 @@ def index() -> str:
     """
     return "Sample!"
 
+
 def arg_issues(args: Mapping) -> Optional[Tuple[str, int]]:
+    """Validate the request arguments.
+
+    Args:
+        args:
+
+    Returns:
+        Issues discovered in the arguments and a recommended return code
+
+    """
     bibid = args.get("bib_id")
     mms_id = args.get("mms_id")
     if bibid is None and mms_id is None:
