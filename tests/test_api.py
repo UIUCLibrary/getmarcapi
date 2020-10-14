@@ -22,7 +22,6 @@ def test_root(client):
     rc = client.get('/')
     assert rc.status_code == 200
 
-
 def test_get_record_xml(monkeypatch, client):
     def mock_response(self, bibid, *args, **kwargs):
         mock_xml_record = """
@@ -34,7 +33,22 @@ def test_get_record_xml(monkeypatch, client):
         </record>
         """
         return mock_xml_record
-    monkeypatch.setattr(uiucprescon.getmarc2.records.RecordServer, "bibid_record", mock_response)
+    def mock_get_record_response(self, identifier, identifier_type):
+        mock_xml_record = """
+        <record xmlns="http://www.loc.gov/MARC21/slim" 
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+                xsi:schemaLocation="http://www.loc.gov/MARC21/slim 
+                http://www.loc.gov/standards/marcxml/schema/MARC21slim.xsd">
+        <leader>00834cam a2200253 i 4500</leader>
+        </record>
+        """
+        return mock_xml_record
+    # TODO replace with something that uses
+    #  uiucprescon.getmarc2.records.RecordServer.get_record instead of
+    #  uiucprescon.getmarc2.records.RecordServer.bibid_record
+
+    # monkeypatch.setattr(uiucprescon.getmarc2.records.RecordServer, "bibid_record", mock_response)
+    monkeypatch.setattr(uiucprescon.getmarc2.records.RecordServer, "get_record", mock_get_record_response)
     rc = client.get('/record?bibid=12345')
     assert rc.status_code == 200
     assert rc.content_type == 'text/xml'

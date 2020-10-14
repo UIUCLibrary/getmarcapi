@@ -50,10 +50,11 @@ def get_record() -> Response:
     api_key = app.config.get('API_KEY')
     if api_key is None:
         return Response("Missing api key", status=500)
+    # TODO: get the record based on the type of identifier
     bibid_value = str(bibid).strip()
     try:
         server = getmarc2.records.RecordServer(domain, api_key)
-        data = server.bibid_record(bibid)
+        data = server.get_record(bibid, "bibid")
         header = {"x-api-version": "v1"}
         app.logger.info(f"Retrieved record for bibid {bibid_value}")
 
