@@ -164,15 +164,15 @@ pipeline {
                 beforeAgent true
             }
 //
-            agent {
-                dockerfile {
-                    filename DEFAULT_DOCKER_AGENT_FILENAME
-                    label DEFAULT_DOCKER_AGENT_LABELS
-                    additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
-                }
-            }
             stages{
                 stage("Run Python checks"){
+                    agent {
+                        dockerfile {
+                            filename DEFAULT_DOCKER_AGENT_FILENAME
+                            label DEFAULT_DOCKER_AGENT_LABELS
+                            additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+                        }
+                    }
                     stages{
                         stage("Configuring Testing Environment"){
                             steps{
