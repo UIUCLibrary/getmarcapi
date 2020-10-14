@@ -74,6 +74,7 @@ class RecordGetter:
             )
 
     def __str__(self) -> str:
+        """Display the type of strategy."""
         return \
             f"{self.__repr__()} {self._strategy.__class__.__name__} strategy"
 
