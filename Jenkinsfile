@@ -389,8 +389,6 @@ pipeline {
                                 unstash "FLAKE8_REPORT"
                                 script{
                                     withSonarQubeEnv(installationName:"sonarcloud", credentialsId: 'sonarcloud-getmarcapi') {
-                //                         unstash "DIST-INFO"
-                //                         def props = readProperties(interpolate: false, file: "getmarcapi.dist-info/METADATA")
                                         if (env.CHANGE_ID){
                                             sh(
                                                 label: "Running Sonar Scanner",
