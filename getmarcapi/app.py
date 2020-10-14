@@ -7,7 +7,7 @@ from typing import Tuple, Optional
 
 from flask import Flask, Response, request
 from uiucprescon import getmarc2
-from uiucprescon.getmarc2 import modifiers
+from uiucprescon.getmarc2 import modifiers  # type: ignore
 from .records import RecordGetter
 
 from . import config
