@@ -5,6 +5,7 @@ import argparse
 from flask import Flask, Response, request
 from uiucprescon import getmarc2
 from uiucprescon.getmarc2 import modifiers
+from .records import RecordGetter
 
 from . import config
 
@@ -36,6 +37,7 @@ def get_record() -> Response:
         XML data
 
     """
+
     bibid = request.args.get("bibid")
 
     if bibid is None:
@@ -50,22 +52,29 @@ def get_record() -> Response:
     api_key = app.config.get('API_KEY')
     if api_key is None:
         return Response("Missing api key", status=500)
-    # TODO: get the record based on the type of identifier
     bibid_value = str(bibid).strip()
     try:
-        server = getmarc2.records.RecordServer(domain, api_key)
-        data = server.get_record(bibid, "bibid")
+        record_lookup_strategy = RecordGetter(request.args)
+        identifier = record_lookup_strategy.get_identifier(request.args)
+        metadata_record = \
+            record_lookup_strategy.get_record(
+                server=getmarc2.records.RecordServer(domain, api_key),
+                identifier=identifier
+            )
+
         header = {"x-api-version": "v1"}
-        app.logger.info(f"Retrieved record for bibid {bibid_value}")
+        app.logger.info(f"Retrieved record for {identifier}")
 
         field_adder = modifiers.Add955()
         field_adder.bib_id = bibid
         if "v" in bibid:
             field_adder.contains_v = True
 
-        data = field_adder.enrich(data)
+        metadata_record = field_adder.enrich(metadata_record)
 
-        return Response(data, headers=header, content_type="text/xml")
+        return \
+            Response(metadata_record, headers=header, content_type="text/xml")
+
     except AttributeError as error:
         # pylint: disable=no-member
         app.logger.info(f"Failed to retrieve bibid {bibid_value}")

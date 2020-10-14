@@ -596,10 +596,12 @@ pipeline {
             }
             stages{
                 stage("Deploy to Devpi Staging") {
-                    dockerfile {
-                        filename DEFAULT_DOCKER_AGENT_FILENAME
-                        label DEFAULT_DOCKER_AGENT_LABELS
-                        additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+                    agent{
+                        dockerfile {
+                            filename DEFAULT_DOCKER_AGENT_FILENAME
+                            label DEFAULT_DOCKER_AGENT_LABELS
+                            additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+                        }
                     }
                     steps {
                         unstash "PYTHON_PACKAGES"
