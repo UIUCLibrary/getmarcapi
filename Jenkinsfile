@@ -371,7 +371,7 @@ pipeline {
         }
         stage("Sonarcloud Analysis"){
             agent {
-              `dockerfile` {
+              dockerfile {
                 filename 'ci/docker/sonarcloud/Dockerfile'
                 label 'linux && docker'
               }
