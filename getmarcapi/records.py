@@ -57,6 +57,15 @@ class Bibid(AbsRecordStrategy):
         return args['bibid']
 
 
+class Mmsid(AbsRecordStrategy):
+
+    def get_record(self, server, identifier) -> str:
+        return server.get_record(identifier, "mmsid")
+
+    def get_identifier(self, args: Mapping) -> str:
+        return args["mmsid"]
+
+
 class RecordGetter:
     """Public class for interacting with records from the api record server."""
 
@@ -83,6 +92,9 @@ class RecordGetter:
         # todo: _get_strategy
         if "bibid" in args:
             return Bibid(args)
+        if "mmsid" in args:
+            return Mmsid(args)
+
         return None
 
     def get_record(self, server, identifier: str) -> str:
