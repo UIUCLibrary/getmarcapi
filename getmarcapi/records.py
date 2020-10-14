@@ -94,7 +94,7 @@ class RecordGetter:
             MARC xml record
 
         """
-        assert self._strategy is not None
+        assert self._strategy is not None  # nosec
         record = self._strategy.get_record(server, identifier)
         if record is None:
             raise ValueError(
