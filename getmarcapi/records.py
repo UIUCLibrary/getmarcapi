@@ -54,11 +54,11 @@ class Bibid(AbsRecordStrategy):
             bibid
 
         """
-        return args['bibid']
+        return args['bib_id']
 
 
 class Mmsid(AbsRecordStrategy):
-    """MMSID used by Veridian."""
+    """MMSID used by ALMA."""
 
     def get_record(self, server, identifier) -> str:
         """Get the record for the mmsid from the server.
@@ -83,7 +83,7 @@ class Mmsid(AbsRecordStrategy):
             mmsid
 
         """
-        return args["mmsid"]
+        return args["mms_id"]
 
 
 class RecordGetter:
@@ -109,10 +109,9 @@ class RecordGetter:
 
     @staticmethod
     def _get_strategy(args: Mapping) -> Optional[AbsRecordStrategy]:
-        # todo: _get_strategy
-        if "bibid" in args:
+        if "bib_id" in args:
             return Bibid(args)
-        if "mmsid" in args:
+        if "mms_id" in args:
             return Mmsid(args)
 
         return None

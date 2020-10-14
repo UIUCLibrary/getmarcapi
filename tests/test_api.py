@@ -35,7 +35,7 @@ def test_get_record_xml(monkeypatch, client):
         return mock_xml_record
 
     monkeypatch.setattr(uiucprescon.getmarc2.records.RecordServer, "get_record", mock_get_record_response)
-    rc = client.get('/record?bibid=12345')
+    rc = client.get('/record?bib_id=12345')
     assert rc.status_code == 200
     assert rc.content_type == 'text/xml'
 

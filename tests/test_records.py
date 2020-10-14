@@ -13,7 +13,7 @@ def test_invalid_record_strategy():
 @pytest.fixture()
 def bibid_request_args():
     return {
-        "bibid": "sample"
+        "bib_id": "sample"
     }
 
 
@@ -30,7 +30,7 @@ def test_bibid_record_identifier(bibid_request_args):
 @pytest.fixture()
 def mmsid_request_args():
     return {
-        "mmsid": "sample"
+        "mms_id": "sample"
     }
 
 
