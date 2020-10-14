@@ -87,7 +87,7 @@ def get_record() -> Response:
 
         if 'bibid' in request.args:
             field_adder = modifiers.Add955()
-            bibid = request.args.get("bibid")
+            bibid = request.args["bib_id"]
             field_adder.bib_id = bibid
             if "v" in bibid:
                 field_adder.contains_v = True
