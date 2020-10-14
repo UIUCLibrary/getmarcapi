@@ -162,7 +162,6 @@ pipeline {
             when{
                 equals expected: true, actual: params.RUN_CHECKS
             }
-//
             stages{
                 stage("Run Python checks"){
                     agent {
