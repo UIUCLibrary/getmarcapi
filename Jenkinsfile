@@ -44,7 +44,29 @@ def devpiRunTest(pkgPropertiesFile, devpiIndex, devpiSelector, devpiUsername, de
         }
     }
 }
-
+def startup(){
+    stage("Getting Distribution Info"){
+        node('linux && docker') {
+            docker.image('python:3.8').inside {
+                timeout(2){
+                    try{
+                        checkout scm
+                        sh(
+                           label: "Running setup.py with dist_info",
+                           script: """python --version
+                                      python setup.py dist_info
+                                   """
+                        )
+                        stash includes: "*.dist-info/**", name: 'DIST-INFO'
+                        archiveArtifacts artifacts: "*.dist-info/**"
+                    } finally{
+                        deleteDir()
+                    }
+                }
+            }
+        }
+    }
+}
 def get_props(metadataFile){
     stage("Reading Package Metadata"){
         node() {
