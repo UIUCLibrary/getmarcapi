@@ -4,13 +4,12 @@ FROM python:${PYTHON_VERSION} as wheel_builder
 ARG PIP_EXTRA_INDEX_URL
 ARG PIP_TRUSTED_HOST
 ARG PIP_INDEX_URL
+ADD ci/docker/python/shared/requirements-ci.txt /tmp/
 RUN python -m pip install --upgrade pip &&  \
     pip install setuptools && \
-    pip install wheel
-
-ADD ci/docker/python/shared/requirements-ci.txt /tmp/
-
-RUN pip wheel --wheel-dir=/wheels  \
+    pip install wheel && \
+    pip wheel --no-cache-dir \
+        --wheel-dir=/wheels  \
         -r /tmp/requirements-ci.txt && \
     rm -rf  /root/.cache
 
@@ -23,9 +22,9 @@ ARG GROUP_ID=1000
 RUN groupadd -g $GROUP_ID user && \
     useradd -u $USER_ID -s /bin/sh -m -d /home/user -g user user
 
-COPY --from=wheel_builder /wheels /wheels/
 ADD ci/docker/python/shared/requirements-ci.txt /tmp/
+COPY --from=wheel_builder /wheels /wheels/
 ENV PIP_FIND_LINKS=/wheels
 
-RUN pip install --no-index --find-links=/wheels \
+RUN pip install --no-index --no-cache-dir --find-links=/wheels \
     -r /tmp/requirements-ci.txt
