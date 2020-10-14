@@ -379,8 +379,8 @@ pipeline {
                 unstash "FLAKE8_REPORT"
                 script{
                     withSonarQubeEnv(installationName:"sonarcloud", credentialsId: 'sonarcloud-getmarcapi') {
-                        unstash "DIST-INFO"
-                        def props = readProperties(interpolate: false, file: "getmarcapi.dist-info/METADATA")
+//                         unstash "DIST-INFO"
+//                         def props = readProperties(interpolate: false, file: "getmarcapi.dist-info/METADATA")
                         if (env.CHANGE_ID){
                             sh(
                                 label: "Running Sonar Scanner",
@@ -689,8 +689,8 @@ pipeline {
                     }
                     steps {
                         script {
-                            unstash "DIST-INFO"
-                            def props = readProperties interpolate: true, file: 'getmarcapi.dist-info/METADATA'
+//                             unstash "DIST-INFO"
+//                             def props = readProperties interpolate: true, file: 'getmarcapi.dist-info/METADATA'
                             sh(
                                 label: "Pushing to production/release index",
                                 script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
@@ -708,8 +708,8 @@ pipeline {
                        script{
                             if (!env.TAG_NAME?.trim()){
                                 docker.build("getmarc:devpi",'-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release .').inside{
-                                    unstash "DIST-INFO"
-                                    def props = readProperties interpolate: true, file: 'getmarcapi.dist-info/METADATA'
+//                                     unstash "DIST-INFO"
+//                                     def props = readProperties interpolate: true, file: 'getmarcapi.dist-info/METADATA'
                                     sh(
                                         label: "Moving DevPi package from staging index to index",
                                         script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
@@ -727,8 +727,8 @@ pipeline {
                     node('linux && docker') {
                        script{
                             docker.build("getmarc:devpi",'-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release .').inside{
-                                unstash "DIST-INFO"
-                                def props = readProperties interpolate: true, file: 'getmarcapi.dist-info/METADATA'
+//                                 unstash "DIST-INFO"
+//                                 def props = readProperties interpolate: true, file: 'getmarcapi.dist-info/METADATA'
                                 sh(
                                     label: "Removing Package from DevPi staging index",
                                     script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
