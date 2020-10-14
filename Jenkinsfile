@@ -436,16 +436,6 @@ pipeline {
                     }
                 }
             }
-            post{
-                cleanup{
-                    cleanWs(
-                        deleteDirs: true,
-                        patterns: [
-                            [pattern: 'reports/coverage.xml', type: 'INCLUDE'],
-                            [pattern: 'reports/coverage', type: 'INCLUDE'],
-                        ])
-                }
-            }
         }
         stage("Distribution Packages"){
             when{
