@@ -343,10 +343,11 @@ pipeline {
         }
         stage("Sonarcloud Analysis"){
             agent {
-              dockerfile {
-                filename 'ci/docker/sonarcloud/Dockerfile'
-                label 'linux && docker'
-              }
+                dockerfile {
+                    filename 'ci/docker/python/linux/Dockerfile'
+                    label 'linux && docker'
+                    additionalBuildArgs "--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
+                }
             }
             options{
                 lock("getmarcapi-sonarscanner")
