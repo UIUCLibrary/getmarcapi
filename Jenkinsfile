@@ -454,9 +454,9 @@ pipeline {
                 stage("Creating Package") {
                     agent {
                         dockerfile {
-                            filename 'ci/docker/python/linux/Dockerfile'
-                            label 'linux && docker'
-                            additionalBuildArgs "--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
+                            filename DEFAULT_DOCKER_AGENT_FILENAME
+                            label DEFAULT_DOCKER_AGENT_LABELS
+                            additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                         }
                     }
                     steps {
@@ -494,8 +494,8 @@ pipeline {
                         }
                         agent {
                             dockerfile {
-                                filename "ci/docker/python/linux/Dockerfile"
-                                label "linux && docker"
+                                filename DEFAULT_DOCKER_AGENT_FILENAME
+                                label DEFAULT_DOCKER_AGENT_LABELS
                                 additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
                             }
                         }
@@ -596,12 +596,10 @@ pipeline {
             }
             stages{
                 stage("Deploy to Devpi Staging") {
-                    agent {
-                        dockerfile {
-                            filename 'ci/docker/python/linux/Dockerfile'
-                            label 'linux && docker'
-                            additionalBuildArgs "--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
-                          }
+                    dockerfile {
+                        filename DEFAULT_DOCKER_AGENT_FILENAME
+                        label DEFAULT_DOCKER_AGENT_LABELS
+                        additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                     }
                     steps {
                         unstash "PYTHON_PACKAGES"
@@ -628,8 +626,8 @@ pipeline {
                             stage("Testing DevPi wheel Package"){
                                 agent {
                                     dockerfile {
-                                        filename "ci/docker/python/linux/Dockerfile"
-                                        label "linux && docker"
+                                        filename DEFAULT_DOCKER_AGENT_FILENAME
+                                        label DEFAULT_DOCKER_AGENT_LABELS
                                         additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
                                     }
                                 }
@@ -653,8 +651,8 @@ pipeline {
                             stage("Testing DevPi sdist Package"){
                                 agent {
                                     dockerfile {
-                                        filename "ci/docker/python/linux/Dockerfile"
-                                        label "linux && docker"
+                                        filename DEFAULT_DOCKER_AGENT_FILENAME
+                                        label DEFAULT_DOCKER_AGENT_LABELS
                                         additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
                                     }
                                 }
@@ -697,9 +695,9 @@ pipeline {
                     }
                     agent {
                         dockerfile {
-                            filename 'ci/docker/python/linux/Dockerfile'
-                            label 'linux && docker'
-                            additionalBuildArgs '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release'
+                            filename DEFAULT_DOCKER_AGENT_FILENAME
+                            label DEFAULT_DOCKER_AGENT_LABELS
+                            additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                         }
                     }
                     steps {
