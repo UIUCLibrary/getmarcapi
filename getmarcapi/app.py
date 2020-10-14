@@ -2,7 +2,7 @@
 import logging
 import sys
 import argparse
-from collections import Mapping, Iterable
+from collections import Mapping
 from typing import Tuple, Optional
 
 from flask import Flask, Response, request
@@ -49,6 +49,7 @@ def arg_issues(args: Mapping) -> Optional[Tuple[str, int]]:
 
     return None
 
+
 @app.route('/record')
 def get_record() -> Response:
     """Get the record data for a given bibid.
@@ -72,7 +73,6 @@ def get_record() -> Response:
     if api_key is None:
         return Response("Missing api key", status=500)
 
-
     try:
         record_lookup_strategy = RecordGetter(request.args)
         identifier = record_lookup_strategy.get_identifier(request.args)
@@ -85,7 +85,7 @@ def get_record() -> Response:
         header = {"x-api-version": "v1"}
         app.logger.info(f"Retrieved record for {identifier}")
 
-        if 'bibid' in request.args:
+        if 'bib_id' in request.args:
             field_adder = modifiers.Add955()
             bibid = request.args["bib_id"]
             field_adder.bib_id = bibid
@@ -99,7 +99,7 @@ def get_record() -> Response:
 
     except AttributeError as error:
         # pylint: disable=no-member
-        app.logger.info(f"Failed to retrieve record")
+        app.logger.info("Failed to retrieve record")
         return Response(f"Failed. {error}", 400, content_type="text")
 
 
