@@ -58,11 +58,31 @@ class Bibid(AbsRecordStrategy):
 
 
 class Mmsid(AbsRecordStrategy):
+    """MMSID used by Veridian."""
 
     def get_record(self, server, identifier) -> str:
+        """Get the record for the mmsid from the server.
+
+        Args:
+            server: Server used to make api request
+            identifier: mmsid of the record
+
+        Returns:
+            xml record for the bibid
+
+        """
         return server.get_record(identifier, "mmsid")
 
     def get_identifier(self, args: Mapping) -> str:
+        """Retrieve the mmsid from the args.
+
+        Args:
+            args:
+
+        Returns:
+            mmsid
+
+        """
         return args["mmsid"]
 
 
