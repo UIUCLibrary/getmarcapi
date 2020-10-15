@@ -84,7 +84,7 @@ def props = get_props("getmarcapi.dist-info/METADATA")
 def DEFAULT_DOCKER_AGENT_FILENAME = 'ci/docker/python/linux/Dockerfile'
 def DEFAULT_DOCKER_AGENT_LABELS = 'linux && docker'
 def DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release --build-arg PIP_EXTRA_INDEX_URL'
-def dockerImage
+
 pipeline {
     agent none
     parameters {
@@ -761,42 +761,28 @@ pipeline {
                             agent{
                                 label "linux && docker"
                             }
-                            stages{
-                                stage("Build docker"){
-                                    steps{
-                                        script{
-                                            withCredentials([string(credentialsId: 'ALMA_API_KEY', variable: 'API_KEY')]) {
-                                                writeFile(
-                                                    file: 'api.cfg',
-                                                    text: """[ALMA_API]
-                                                             API_DOMAIN=https://api-na.hosted.exlibrisgroup.com
-                                                             API_KEY=${API_KEY}
-                                                             """
-                                                    )
-                                            }
-                                            docker.withServer("tcp://130.126.162.46:2376", "DOCKER_TYKO"){
-                                                dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", ". --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release")
+                            input {
+                                message 'Deploy to to server'
+                            }
+                            steps{
+                                script{
+                                    withCredentials([string(credentialsId: 'ALMA_API_KEY', variable: 'API_KEY')]) {
+                                        writeFile(
+                                            file: 'api.cfg',
+                                            text: """[ALMA_API]
+                                                     API_DOMAIN=https://api-na.hosted.exlibrisgroup.com
+                                                     API_KEY=${API_KEY}
+                                                     """
+                                            )
+                                    }
+                                    docker.withServer("tcp://130.126.162.46:2376", "DOCKER_TYKO"){
+                                        def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", ". --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release")
+                                        sh "docker stop getmarc2"
+                                        dockerImage.run("-p 8001:5000 --name getmarc2 --rm")
 
-                                            }
-//                                             }
-                                        }
-                                    }
-                                }
-                                stage("Deploy Docker Image"){
-                                    input {
-                                        message 'Deploy to to server'
-                                    }
-                                    steps{
-                                        script{
-                                            docker.withServer("tcp://130.126.162.46:2376", "DOCKER_TYKO"){
-                                                sh "docker stop getmarc2"
-                                                dockerImage.run("-p 8001:5000 --name getmarc2 --rm")
-                                            }
-                                        }
                                     }
                                 }
                             }
-
                         }
                         stage("Deploy Documentation"){
                             when{
