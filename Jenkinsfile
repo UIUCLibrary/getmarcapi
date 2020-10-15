@@ -755,6 +755,12 @@ pipeline {
                 }
                 stage("Additional Deploy") {
                     parallel{
+                        stage("Deploy to Production"){
+                            steps{
+                                echo "deploying"
+                            }
+
+                        }
                         stage("Deploy Documentation"){
                             when{
                                 equals expected: true, actual: params.DEPLOY_DOCS
