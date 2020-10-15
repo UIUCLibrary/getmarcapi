@@ -762,7 +762,10 @@ pipeline {
                             }
                             steps{
                                 script{
-                                    sh "touch api.cfg"
+                                    sh """echo '[ALMA_API]' > api.cfg
+                                          echo 'API_KEY=xxxxxxxxxxx' >> api.cfg
+                                    """
+
                                     def customImage = docker.build("getmarcapi:${env.BUILD_ID}", ". --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release")
                                 }
                             }
