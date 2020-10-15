@@ -767,7 +767,7 @@ pipeline {
                                             file: 'api.cfg',
                                             text: """[ALMA_API]
                                                      API_DOMAIN=https://api-na.hosted.exlibrisgroup.com
-                                                     API_KEY=${ALMA_API_KEY}
+                                                     API_KEY=${API_KEY}
                                                      """
                                             )
                                     }
