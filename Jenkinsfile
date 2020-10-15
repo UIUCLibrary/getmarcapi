@@ -762,6 +762,7 @@ pipeline {
                             }
                             steps{
                                 script{
+                                    sh "touch api.cfg"
                                     def customImage = docker.build("getmarcapi:${env.BUILD_ID}")
                                 }
                             }
