@@ -762,13 +762,15 @@ pipeline {
                             }
                             steps{
                                 script{
-                                    writeFile(
-                                        file: 'api.cfg',
-                                        text: """[ALMA_API]
-                                                 API_DOMAIN=https://api-na.hosted.exlibrisgroup.com
-                                                 API_KEY=xxxxxxxxxxx
-                                                 """
-                                        )
+                                    withCredentials([string(credentialsId: 'ALMA_API_KEY', variable: 'API_KEY')]) {
+                                        writeFile(
+                                            file: 'api.cfg',
+                                            text: """[ALMA_API]
+                                                     API_DOMAIN=https://api-na.hosted.exlibrisgroup.com
+                                                     API_KEY=${ALMA_API_KEY}
+                                                     """
+                                            )
+                                    }
 
                                     def customImage = docker.build("getmarcapi:${env.BUILD_ID}", ". --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release")
                                 }
