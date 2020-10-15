@@ -775,7 +775,9 @@ pipeline {
                                                     )
                                             }
 //                                             docker.withServer("tcp://130.126.162.46:2376"){
-                                            dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", ". --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release")
+                                            withEnv(['DOCKER_HOST=tcp://130.126.162.46:2376']) {
+                                                dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", ". --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release")
+                                            }
 //                                             }
                                         }
                                     }
