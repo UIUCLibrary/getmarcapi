@@ -780,7 +780,7 @@ pipeline {
                                 }
                                 stage("Deploy Docker Image"){
                                     steps{
-                                        echo "deploying"
+                                        echo "deploying ${customImage}"
                                     }
                                 }
                             }
