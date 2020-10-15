@@ -88,7 +88,8 @@ def DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg USER_ID=$(id -u) --b
 pipeline {
     agent none
     parameters {
-        booleanParam(name: "RUN_CHECKS", defaultValue: true, description: "Run checks on code")
+//         TODO: set true
+        booleanParam(name: "RUN_CHECKS", defaultValue: false, description: "Run checks on code")
         booleanParam(name: "TEST_RUN_TOX", defaultValue: true, description: "Run Tox Tests")
         booleanParam(name: "USE_SONARQUBE", defaultValue: true, description: "Send data test data to SonarQube")
         booleanParam(name: "BUILD_PACKAGES", defaultValue: false, description: "Build Python packages")
@@ -778,7 +779,7 @@ pipeline {
                                                      """
                                             )
                                     }
-                                    configFileProvider([configFile(fileId: 'deployapi', variable: 'CONFIG_FILE')]) {
+                                    configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
                                         def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
                                         echo "Got ${CONFIG}"
                                         def build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(" ")

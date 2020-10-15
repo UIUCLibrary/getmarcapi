@@ -1,0 +1,18 @@
+{
+  "deploy": {
+    "docker": {
+      "server": {
+        "apiUrl": "TODO: set your docker remote api url here with port"
+      },
+      "build": {
+        "buildArgs": []
+      },
+      "container": {
+        "name": "getmarc2",
+        "ports": [
+          "8001:5000"
+        ]
+      }
+    }
+  }
+}
