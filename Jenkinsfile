@@ -781,7 +781,7 @@ pipeline {
                                             )
                                     }
                                     configFileProvider([configFile(fileId: 'getmarcapi_deployment', variable: 'DEPLOY_CONFIG')]) {
-                                        // some block
+                                        echo "Reading ${DEPLOY_CONFIG}"
                                         def deploy_props = readProperties(DEPLOY_CONFIG)
                                         echo "Got ${deploy_props}"
 //                                         docker.withServer("tcp://130.126.162.46:2376", "DOCKER_TYKO"){
