@@ -758,17 +758,18 @@ pipeline {
                 stage("Additional Deploy") {
                     parallel{
                         stage("Deploy to Production"){
-                            when{
-                                equals expected: true, actual: params.DEPLOY_TO_PRODUCTION
-                                beforeAgent true
-                                beforeInput true
-                            }
+//                         TODO: TURN BACK ON
+//                             when{
+//                                 equals expected: true, actual: params.DEPLOY_TO_PRODUCTION
+//                                 beforeAgent true
+//                                 beforeInput true
+//                             }
                             agent{
                                 label "linux && docker"
                             }
-                            input {
-                                message 'Deploy to to server'
-                            }
+//                             input {
+//                                 message 'Deploy to to server'
+//                             }
                             steps{
                                 script{
                                     withCredentials([string(credentialsId: 'ALMA_API_KEY', variable: 'API_KEY')]) {
@@ -781,7 +782,7 @@ pipeline {
                                             )
                                     }
                                     configFileProvider([configFile(fileId: 'deployapi', variable: 'CONFIG_FILE')]) {
-                                        def deploy_config = readJSON(file: CONFIG_FILE)
+                                        def deploy_config = readJSON(file: CONFIG_FILE)['deploy']
                                         echo "Got ${deploy_config}"
 
                                     }
