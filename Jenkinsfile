@@ -783,8 +783,15 @@ pipeline {
                                             )
                                     }
                                     configFileProvider([configFile(fileId: 'deployapi', variable: 'CONFIG_FILE')]) {
-                                        def deploy_config = readJSON(file: CONFIG_FILE)['deploy']
-                                        echo "Got ${deploy_config}"
+                                        def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
+                                        echo "Got ${CONFIG}"
+                                        echo "docker api url = ${CONFIG['docker']['apiUrl']}"
+                                        echo "docker buildArgs = ${CONFIG['docker']['buildArgs']}"
+                                        //                                         docker.withServer(deploy_props['Docker-API-URL'], "DOCKER_TYKO"){
+//                                             def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", ". ${deploy_props['Docker-BUILD_ARGS']}")
+//                                             sh "docker stop getmarc2"
+//                                             dockerImage.run("-p 8001:5000 --name getmarc2 --rm")
+
 
                                     }
 //                                     configFileProvider([configFile(fileId: 'getmarcapi_deployment', variable: 'DEPLOY_CONFIG')]) {
