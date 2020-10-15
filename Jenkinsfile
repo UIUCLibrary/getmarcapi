@@ -88,8 +88,7 @@ def DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg USER_ID=$(id -u) --b
 pipeline {
     agent none
     parameters {
-//         todo set to true
-        booleanParam(name: "RUN_CHECKS", defaultValue: false, description: "Run checks on code")
+        booleanParam(name: "RUN_CHECKS", defaultValue: true, description: "Run checks on code")
         booleanParam(name: "TEST_RUN_TOX", defaultValue: true, description: "Run Tox Tests")
         booleanParam(name: "USE_SONARQUBE", defaultValue: true, description: "Send data test data to SonarQube")
         booleanParam(name: "BUILD_PACKAGES", defaultValue: false, description: "Build Python packages")
@@ -740,8 +739,6 @@ pipeline {
                             node('linux && docker') {
                                script{
                                     docker.build("getmarc:devpi",'-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release .').inside{
-        //                                 unstash "DIST-INFO"
-        //                                 def props = readProperties interpolate: true, file: 'getmarcapi.dist-info/METADATA'
                                         sh(
                                             label: "Removing Package from DevPi staging index",
                                             script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
@@ -759,18 +756,17 @@ pipeline {
                 stage("Additional Deploy") {
                     parallel{
                         stage("Deploy to Production"){
-//                         TODO: TURN BACK ON
-//                             when{
-//                                 equals expected: true, actual: params.DEPLOY_TO_PRODUCTION
-//                                 beforeAgent true
-//                                 beforeInput true
-//                             }
+                            when{
+                                equals expected: true, actual: params.DEPLOY_TO_PRODUCTION
+                                beforeAgent true
+                                beforeInput true
+                            }
                             agent{
                                 label "linux && docker"
                             }
-//                             input {
-//                                 message 'Deploy to to server'
-//                             }
+                            input {
+                                message 'Deploy to to server'
+                            }
                             steps{
                                 script{
                                     withCredentials([string(credentialsId: 'ALMA_API_KEY', variable: 'API_KEY')]) {
