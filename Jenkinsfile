@@ -784,7 +784,7 @@ pipeline {
                                         echo "Reading ${DEPLOY_CONFIG}"
                                         sh "ls -la ${DEPLOY_CONFIG}"
                                         sh "cat ${DEPLOY_CONFIG}"
-                                        def deploy_props = readProperties(DEPLOY_CONFIG)
+                                        def deploy_props = readProperties(interpolate: false, file: DEPLOY_CONFIG)
                                         echo "Got ${deploy_props}"
 //                                         docker.withServer("tcp://130.126.162.46:2376", "DOCKER_TYKO"){
 //                                             def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", ". --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release")
