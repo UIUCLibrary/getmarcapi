@@ -781,7 +781,9 @@ pipeline {
                                 }
                                 stage("Deploy Docker Image"){
                                     steps{
-                                        echo "deploying ${dockerImage}"
+                                        script{
+                                            dockerImage.push('latest')
+                                        }
                                     }
                                 }
                             }
