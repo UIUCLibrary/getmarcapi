@@ -789,9 +789,9 @@ pipeline {
 
                                         docker.withServer(CONFIG['docker']['apiUrl'], "DOCKER_TYKO"){
                                             def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", "${build_args} .")
+                                            sh "docker stop getmarc2"
+                                            dockerImage.run("-p 8001:5000 --name getmarc2 --rm")
                                         }
-//                                             sh "docker stop getmarc2"
-//                                             dockerImage.run("-p 8001:5000 --name getmarc2 --rm")
 
 
                                     }
