@@ -774,18 +774,19 @@ pipeline {
                                                              """
                                                     )
                                             }
-
-                                            dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", ". --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release")
+                                            withServer("https://130.126.162.46:2376"){
+                                                dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", ". --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release")
+                                            }
                                         }
                                     }
                                 }
-                                stage("Deploy Docker Image"){
-                                    steps{
-                                        script{
-                                            dockerImage.push('latest')
-                                        }
-                                    }
-                                }
+//                                 stage("Deploy Docker Image"){
+//                                     steps{
+//                                         script{
+//                                             dockerImage.push('latest')
+//                                         }
+//                                     }
+//                                 }
                             }
 
                         }
