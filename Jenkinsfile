@@ -780,15 +780,20 @@ pipeline {
                                                      """
                                             )
                                     }
-                                    configFileProvider([configFile(fileId: 'getmarcapi_deployment', variable: 'DEPLOY_CONFIG')]) {
-                                        def deploy_props = readProperties(interpolate: false, file: DEPLOY_CONFIG)
-                                        docker.withServer(deploy_props['Docker-API-URL'], "DOCKER_TYKO"){
-                                            def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", ". --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release")
-                                            sh "docker stop getmarc2"
-                                            dockerImage.run("-p 8001:5000 --name getmarc2 --rm")
+                                    configFileProvider([configFile(fileId: 'deployapi', variable: 'CONFIG_FILE')]) {
+                                        def deploy_config = readJSON(file: CONFIG_FILE)
+                                        echo "Got ${deploy_config}"
 
-                                        }
                                     }
+//                                     configFileProvider([configFile(fileId: 'getmarcapi_deployment', variable: 'DEPLOY_CONFIG')]) {
+//                                         def deploy_props = readProperties(interpolate: false, file: DEPLOY_CONFIG)
+//                                         docker.withServer(deploy_props['Docker-API-URL'], "DOCKER_TYKO"){
+//                                             def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", ". ${deploy_props['Docker-BUILD_ARGS']}")
+//                                             sh "docker stop getmarc2"
+//                                             dockerImage.run("-p 8001:5000 --name getmarc2 --rm")
+//
+//                                         }
+//                                     }
                                 }
                             }
                         }
