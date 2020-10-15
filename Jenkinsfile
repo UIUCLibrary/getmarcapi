@@ -96,6 +96,7 @@ pipeline {
         booleanParam(name: "DEPLOY_DEVPI", defaultValue: false, description: "Deploy to devpi on http://devpi.library.illinois.edu/DS_Jenkins/${env.BRANCH_NAME}")
         booleanParam(name: "DEPLOY_DEVPI_PRODUCTION", defaultValue: false, description: "Deploy to production devpi on https://devpi.library.illinois.edu/production/release. Master branch Only")
         booleanParam(name: 'DEPLOY_DOCS', defaultValue: false, description: '')
+        booleanParam(name: "DEPLOY_TO_PRODUCTION", defaultValue: false, description: "Deploy to Production Server")
     }
     stages {
         stage("Getting Testing Environment Info"){
@@ -758,6 +759,11 @@ pipeline {
                 stage("Additional Deploy") {
                     parallel{
                         stage("Deploy to Production"){
+                            when{
+                                equals expected: true, actual: params.DEPLOY_TO_PRODUCTION
+                                beforeAgent true
+                                beforeInput true
+                            }
                             agent{
                                 label "linux && docker"
                             }
