@@ -760,19 +760,28 @@ pipeline {
                             agent{
                                 label "linux && docker"
                             }
-                            steps{
-                                script{
-                                    withCredentials([string(credentialsId: 'ALMA_API_KEY', variable: 'API_KEY')]) {
-                                        writeFile(
-                                            file: 'api.cfg',
-                                            text: """[ALMA_API]
-                                                     API_DOMAIN=https://api-na.hosted.exlibrisgroup.com
-                                                     API_KEY=${API_KEY}
-                                                     """
-                                            )
-                                    }
+                            stages{
+                                stage("Build docker"){
+                                    steps{
+                                        script{
+                                            withCredentials([string(credentialsId: 'ALMA_API_KEY', variable: 'API_KEY')]) {
+                                                writeFile(
+                                                    file: 'api.cfg',
+                                                    text: """[ALMA_API]
+                                                             API_DOMAIN=https://api-na.hosted.exlibrisgroup.com
+                                                             API_KEY=${API_KEY}
+                                                             """
+                                                    )
+                                            }
 
-                                    def customImage = docker.build("getmarcapi:${env.BUILD_ID}", ". --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release")
+                                            def customImage = docker.build("getmarcapi:${env.BUILD_ID}", ". --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release")
+                                        }
+                                    }
+                                }
+                                stage("Deploy Docker Image"){
+                                    steps{
+                                        echo "deploying"
+                                    }
                                 }
                             }
 
