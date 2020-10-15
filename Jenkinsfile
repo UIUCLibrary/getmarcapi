@@ -783,6 +783,9 @@ pipeline {
                                     }
                                 }
                                 stage("Deploy Docker Image"){
+                                    input {
+                                        message 'Deploy to to server'
+                                    }
                                     steps{
                                         script{
                                             docker.withServer("tcp://130.126.162.46:2376", "DOCKER_TYKO"){
