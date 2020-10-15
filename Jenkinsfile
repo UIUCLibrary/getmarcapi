@@ -757,8 +757,13 @@ pipeline {
                 stage("Additional Deploy") {
                     parallel{
                         stage("Deploy to Production"){
+                            agent{
+                                label "linux && docker"
+                            }
                             steps{
-                                echo "deploying"
+                                script{
+                                    def customImage = docker.build("getmarcapi:${env.BUILD_ID}")
+                                }
                             }
 
                         }
