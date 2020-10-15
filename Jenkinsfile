@@ -785,25 +785,17 @@ pipeline {
                                     configFileProvider([configFile(fileId: 'deployapi', variable: 'CONFIG_FILE')]) {
                                         def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
                                         echo "Got ${CONFIG}"
-                                        def build_args = CONFIG['docker']['buildArgs'].collect{"--build-arg=${it}"}.join(" ")
+                                        def build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(" ")
+                                        def container_config = CONFIG['docker']['container']
+                                        def container_name = container_config['name']
+                                        def container_ports_arg = container_config['ports'] .collect{"-p ${it}"}.join(" ")
 
-                                        docker.withServer(CONFIG['docker']['apiUrl'], "DOCKER_TYKO"){
+                                        docker.withServer(CONFIG['docker']['server']['apiUrl'], "DOCKER_TYKO"){
                                             def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", "${build_args} .")
-                                            sh "docker stop getmarc2"
-                                            dockerImage.run("-p 8001:5000 --name getmarc2 --rm")
+                                            sh "docker stop ${container_name}"
+                                            dockerImage.run("${container_ports_arg} --name ${container_name} --rm")
                                         }
-
-
                                     }
-//                                     configFileProvider([configFile(fileId: 'getmarcapi_deployment', variable: 'DEPLOY_CONFIG')]) {
-//                                         def deploy_props = readProperties(interpolate: false, file: DEPLOY_CONFIG)
-//                                         docker.withServer(deploy_props['Docker-API-URL'], "DOCKER_TYKO"){
-//                                             def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", ". ${deploy_props['Docker-BUILD_ARGS']}")
-//                                             sh "docker stop getmarc2"
-//                                             dockerImage.run("-p 8001:5000 --name getmarc2 --rm")
-//
-//                                         }
-//                                     }
                                 }
                             }
                         }
