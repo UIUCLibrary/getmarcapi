@@ -774,8 +774,7 @@ pipeline {
                                                              """
                                                     )
                                             }
-//                                             docker.withServer("tcp://130.126.162.46:2376"){
-                                            withEnv(['DOCKER_HOST=tcp://130.126.162.46:2376']) {
+                                            docker.withServer("tcp://130.126.162.46:2376", "DOCKER_TYKO"){
                                                 dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", ". --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release")
                                             }
 //                                             }
