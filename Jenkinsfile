@@ -88,7 +88,8 @@ def DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg USER_ID=$(id -u) --b
 pipeline {
     agent none
     parameters {
-        booleanParam(name: "RUN_CHECKS", defaultValue: true, description: "Run checks on code")
+//         TODO: set true
+        booleanParam(name: "RUN_CHECKS", defaultValue: false, description: "Run checks on code")
         booleanParam(name: "TEST_RUN_TOX", defaultValue: true, description: "Run Tox Tests")
         booleanParam(name: "USE_SONARQUBE", defaultValue: true, description: "Send data test data to SonarQube")
         booleanParam(name: "BUILD_PACKAGES", defaultValue: false, description: "Build Python packages")
@@ -739,8 +740,6 @@ pipeline {
                             node('linux && docker') {
                                script{
                                     docker.build("getmarc:devpi",'-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release .').inside{
-        //                                 unstash "DIST-INFO"
-        //                                 def props = readProperties interpolate: true, file: 'getmarcapi.dist-info/METADATA'
                                         sh(
                                             label: "Removing Package from DevPi staging index",
                                             script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
@@ -780,11 +779,19 @@ pipeline {
                                                      """
                                             )
                                     }
-                                    docker.withServer("tcp://130.126.162.46:2376", "DOCKER_TYKO"){
-                                        def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", ". --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release")
-                                        sh "docker stop getmarc2"
-                                        dockerImage.run("-p 8001:5000 --name getmarc2 --rm")
+                                    configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
+                                        def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
+                                        echo "Got ${CONFIG}"
+                                        def build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(" ")
+                                        def container_config = CONFIG['docker']['container']
+                                        def container_name = container_config['name']
+                                        def container_ports_arg = container_config['ports'] .collect{"-p ${it}"}.join(" ")
 
+                                        docker.withServer(CONFIG['docker']['server']['apiUrl'], "DOCKER_TYKO"){
+                                            def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", "${build_args} .")
+                                            sh "docker stop ${container_name}"
+                                            dockerImage.run("${container_ports_arg} --name ${container_name} --rm")
+                                        }
                                     }
                                 }
                             }

@@ -1,0 +1,30 @@
+jenkins:
+  numExecutors: 1
+  mode: NORMAL
+  labelString: "master linux docker"
+unclassified:
+  globalConfigFiles:
+    configs:
+      - json:
+          id: getmarc_deployapi
+          name: Deployment configuration
+          comment:
+          content: |
+            {
+              "deploy": {
+                "docker": {
+                  "server": {
+                    "apiUrl": "TODO: set your docker remote api url here with port"
+                  },
+                  "build": {
+                    "buildArgs": []
+                  },
+                  "container": {
+                    "name": "getmarc2",
+                    "ports": [
+                      "8001:5000"
+                    ]
+                  }
+                }
+              }
+            }
