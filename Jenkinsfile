@@ -776,7 +776,7 @@ pipeline {
                                             }
                                             docker.withServer("tcp://130.126.162.46:2376", "DOCKER_TYKO"){
                                                 dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", ". --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release")
-                                                dockerImage.run("-p 8001:5000 --name getmarc")
+                                                dockerImage.run("-p 8001:5000 --name getmarc --rm")
                                             }
 //                                             }
                                         }
