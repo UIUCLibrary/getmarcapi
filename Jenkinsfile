@@ -763,6 +763,7 @@ pipeline {
                             steps{
                                 script{
                                     sh """echo '[ALMA_API]' > api.cfg
+                                          echo 'API_DOMAIN=https://api-na.hosted.exlibrisgroup.com' >> api.cfg
                                           echo 'API_KEY=xxxxxxxxxxx' >> api.cfg
                                     """
 
