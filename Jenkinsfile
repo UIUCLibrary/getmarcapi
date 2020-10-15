@@ -88,7 +88,8 @@ def DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg USER_ID=$(id -u) --b
 pipeline {
     agent none
     parameters {
-        booleanParam(name: "RUN_CHECKS", defaultValue: true, description: "Run checks on code")
+//         todo set to true
+        booleanParam(name: "RUN_CHECKS", defaultValue: false, description: "Run checks on code")
         booleanParam(name: "TEST_RUN_TOX", defaultValue: true, description: "Run Tox Tests")
         booleanParam(name: "USE_SONARQUBE", defaultValue: true, description: "Send data test data to SonarQube")
         booleanParam(name: "BUILD_PACKAGES", defaultValue: false, description: "Build Python packages")
