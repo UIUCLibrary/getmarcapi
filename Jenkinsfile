@@ -780,11 +780,16 @@ pipeline {
                                                      """
                                             )
                                     }
-                                    docker.withServer("tcp://130.126.162.46:2376", "DOCKER_TYKO"){
-                                        def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", ". --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release")
-                                        sh "docker stop getmarc2"
-                                        dockerImage.run("-p 8001:5000 --name getmarc2 --rm")
-
+                                    configFileProvider([configFile(fileId: 'getmarcapi_deployment', variable: 'DEPLOY_CONFIG')]) {
+                                        // some block
+                                        def deploy_props = readProperties(DEPLOY_CONFIG)
+                                        echo "Got ${deploy_props}"
+//                                         docker.withServer("tcp://130.126.162.46:2376", "DOCKER_TYKO"){
+//                                             def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", ". --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release")
+//                                             sh "docker stop getmarc2"
+//                                             dockerImage.run("-p 8001:5000 --name getmarc2 --rm")
+//
+//                                         }
                                     }
                                 }
                             }
