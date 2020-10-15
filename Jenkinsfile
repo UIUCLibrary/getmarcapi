@@ -786,6 +786,7 @@ pipeline {
                                     steps{
                                         script{
                                             docker.withServer("tcp://130.126.162.46:2376", "DOCKER_TYKO"){
+                                                sh "docker stop getmarc2"
                                                 dockerImage.run("-p 8001:5000 --name getmarc2 --rm")
                                             }
                                         }
