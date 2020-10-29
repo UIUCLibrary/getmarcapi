@@ -27,7 +27,7 @@ def index() -> str:
     """Root page of the api. Something will go here sometime.
 
     Returns:
-        Nothing really goes here yet
+        The front page with basic about and help information/
     """
     return render_template("layout.html")
 
