@@ -186,20 +186,7 @@ pipeline {
                 equals expected: true, actual: params.RUN_CHECKS
             }
             stages{
-                stage("Tox"){
-                    agent {
-                        dockerfile {
-                            filename "ci/docker/python/tox/Dockerfile"
-                            label DEFAULT_DOCKER_AGENT_LABELS
-                            additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
-
-                        }
-                    }
-                    steps{
-                        run_tox_envs()
-                    }
-                }
-                stage("Run Python checks"){
+                stage("Code Quality Checks"){
                     agent {
                         dockerfile {
                             filename DEFAULT_DOCKER_AGENT_FILENAME
@@ -280,15 +267,6 @@ pipeline {
                                             recordIssues(tools: [myPy(name: 'MyPy', pattern: 'logs/mypy.log')])
                                             publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'reports/mypy/html/', reportFiles: 'index.html', reportName: 'MyPy HTML Report', reportTitles: ''])
                                         }
-                                    }
-                                }
-                                stage("Tox") {
-                                    when{
-                                        equals expected: true, actual: params.TEST_RUN_TOX
-                                    }
-                                    steps {
-                                        sh "tox -e py"
-
                                     }
                                 }
                                 stage("Bandit") {
@@ -398,6 +376,22 @@ pipeline {
                                             ]
                                     )
                                 }
+                            }
+                        }
+                        stage("Tox"){
+                            agent {
+                                dockerfile {
+                                    filename "ci/docker/python/tox/Dockerfile"
+                                    label DEFAULT_DOCKER_AGENT_LABELS
+                                    additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+
+                                }
+                            }
+                            when{
+                                equals expected: true, actual: params.TEST_RUN_TOX
+                            }
+                            steps{
+                                run_tox_envs()
                             }
                         }
                     }
