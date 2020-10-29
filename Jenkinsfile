@@ -103,6 +103,7 @@ pipeline {
                 dockerfile {
                     filename DEFAULT_DOCKER_AGENT_FILENAME
                     label DEFAULT_DOCKER_AGENT_LABELS
+                    additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                 }
             }
             steps{
@@ -167,7 +168,7 @@ pipeline {
                         dockerfile {
                             filename "ci/docker/python/tox/Dockerfile"
                             label DEFAULT_DOCKER_AGENT_LABELS
-                            additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+
                         }
                     }
                     steps{
