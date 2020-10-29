@@ -9,3 +9,4 @@ include tox.ini
 
 # Pytest tests
 recursive-include tests *.py
+recursive-include getmarcapi/templates *
