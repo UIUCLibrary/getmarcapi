@@ -14,27 +14,28 @@ def getToxEnvs(){
     return bat(returnStdout: true, script: "@tox -l").trim().split('\n')
 }
 
+def get_tox_stages(envs){
+    def cmds
+    if(isUnix()){
+        cmds = envs.collectEntries({ tox_env ->
+            [tox_env, {
+                sh( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env --parallel--safe-build")
+            }]
+        })
+    } else{
+        cmds = envs.collectEntries({ tox_env ->
+            [tox_env, {
+                bat( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env")
+            }]
+        })
+    }
+    return cmds
+}
 def run_tox_envs(){
     script {
-        def cmds
         def envs = getToxEnvs()
-        if(isUnix()){
-//             envs = sh(returnStdout: true, script: "tox -l").trim().split('\n')
-            cmds = envs.collectEntries({ tox_env ->
-                [tox_env, {
-                    sh( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env --parallel--safe-build")
-                }]
-            })
-        } else{
-//             envs = bat(returnStdout: true, script: "@tox -l").trim().split('\n')
-            cmds = envs.collectEntries({ tox_env ->
-                [tox_env, {
-                    bat( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env")
-                }]
-            })
-        }
         echo "Setting up tox tests for ${envs.join(', ')}"
-        parallel(cmds)
+        parallel(get_tox_stages(envs))
     }
 }
 
