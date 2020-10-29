@@ -103,7 +103,6 @@ pipeline {
                 dockerfile {
                     filename DEFAULT_DOCKER_AGENT_FILENAME
                     label DEFAULT_DOCKER_AGENT_LABELS
-                    additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                 }
             }
             steps{
@@ -163,6 +162,18 @@ pipeline {
                 equals expected: true, actual: params.RUN_CHECKS
             }
             stages{
+                stage("Tox"){
+                    agent {
+                        dockerfile {
+                            filename "ci/docker/python/tox/Dockerfile"
+                            label DEFAULT_DOCKER_AGENT_LABELS
+                            additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+                        }
+                    }
+                    steps{
+                        echo "Running tox"
+                    }
+                }
                 stage("Run Python checks"){
                     agent {
                         dockerfile {
