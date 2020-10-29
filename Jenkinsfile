@@ -378,22 +378,22 @@ pipeline {
                                 }
                             }
                         }
-                        stage("Tox"){
-                            agent {
-                                dockerfile {
-                                    filename "ci/docker/python/tox/Dockerfile"
-                                    label DEFAULT_DOCKER_AGENT_LABELS
-                                    additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+                    }
+                }
+                stage("Tox"){
+                    agent {
+                        dockerfile {
+                            filename "ci/docker/python/tox/Dockerfile"
+                            label DEFAULT_DOCKER_AGENT_LABELS
+                            additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
 
-                                }
-                            }
-                            when{
-                                equals expected: true, actual: params.TEST_RUN_TOX
-                            }
-                            steps{
-                                run_tox_envs()
-                            }
                         }
+                    }
+                    when{
+                        equals expected: true, actual: params.TEST_RUN_TOX
+                    }
+                    steps{
+                        run_tox_envs()
                     }
                 }
                 stage("Sonarcloud Analysis"){
