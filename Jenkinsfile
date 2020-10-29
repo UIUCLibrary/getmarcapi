@@ -391,6 +391,7 @@ pipeline {
                     }
                     when{
                         equals expected: true, actual: params.TEST_RUN_TOX
+                        beforeAgent true
                     }
                     steps{
                         run_tox_envs()
