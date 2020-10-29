@@ -29,11 +29,6 @@ def index() -> str:
     Returns:
         Nothing really goes here yet
     """
-    usage_info = """
-    API for retrieving University of Illinois Library marc records
-    
-     
-    """
     return render_template("layout.html")
 
 
