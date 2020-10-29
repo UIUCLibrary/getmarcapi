@@ -5,7 +5,7 @@ import argparse
 from collections.abc import Mapping
 from typing import Tuple, Optional
 
-from flask import Flask, Response, request
+from flask import Flask, Response, request, render_template
 from uiucprescon import getmarc2
 from uiucprescon.getmarc2 import modifiers  # type: ignore
 from .records import RecordGetter
@@ -27,9 +27,9 @@ def index() -> str:
     """Root page of the api. Something will go here sometime.
 
     Returns:
-        Nothing really goes here yet
+        The front page with basic about and help information/
     """
-    return "Sample!"
+    return render_template("layout.html")
 
 
 def arg_issues(args: Mapping) -> Optional[Tuple[str, int]]:
@@ -50,7 +50,7 @@ def arg_issues(args: Mapping) -> Optional[Tuple[str, int]]:
     return None
 
 
-@app.route('/record')
+@app.route('/api/record', endpoint="record_api")
 def get_record() -> Response:
     """Get the record data for a given bibid.
 
