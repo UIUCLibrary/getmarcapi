@@ -6,6 +6,29 @@ def getDevPiStagingIndex(){
         return "${env.BRANCH_NAME}_staging"
     }
 }
+def run_tox_envs(){
+    script {
+        def cmds
+        def envs
+        if(isUnix()){
+            envs = sh(returnStdout: true, script: "tox -l").trim().split('\n')
+            cmds = envs.collectEntries({ tox_env ->
+                [tox_env, {
+                    sh( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env --parallel--safe-build")
+                }]
+            })
+        } else{
+            envs = bat(returnStdout: true, script: "@tox -l").trim().split('\n')
+            cmds = envs.collectEntries({ tox_env ->
+                [tox_env, {
+                    bat( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env")
+                }]
+            })
+        }
+        echo "Setting up tox tests for ${envs.join(', ')}"
+        parallel(cmds)
+    }
+}
 
 def get_sonarqube_unresolved_issues(report_task_file){
     script{
@@ -168,11 +191,12 @@ pipeline {
                         dockerfile {
                             filename "ci/docker/python/tox/Dockerfile"
                             label DEFAULT_DOCKER_AGENT_LABELS
+                            additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
 
                         }
                     }
                     steps{
-                        echo "Running tox"
+                        run_tox_envs()
                     }
                 }
                 stage("Run Python checks"){
