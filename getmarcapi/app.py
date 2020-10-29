@@ -2,8 +2,7 @@
 import logging
 import sys
 import argparse
-from collections.abc import Mapping
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Mapping
 
 from flask import Flask, Response, request, render_template
 from uiucprescon import getmarc2
@@ -32,7 +31,7 @@ def index() -> str:
     return render_template("layout.html")
 
 
-def arg_issues(args: Mapping) -> Optional[Tuple[str, int]]:
+def arg_issues(args: Mapping[str, str]) -> Optional[Tuple[str, int]]:
     """Validate the request arguments.
 
     Args:

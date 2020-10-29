@@ -10,7 +10,7 @@ from typing import Mapping, Optional
 class AbsRecordStrategy(abc.ABC):
     """Base class for working with various types of records."""
 
-    def __init__(self, args: Mapping):
+    def __init__(self, args: Mapping[str, str]):
         """Working with various types of identifiers.
 
         Args:
@@ -24,7 +24,7 @@ class AbsRecordStrategy(abc.ABC):
         """Retrieve a record for a given identifier."""
 
     @abc.abstractmethod
-    def get_identifier(self, args: Mapping) -> str:
+    def get_identifier(self, args: Mapping[str, str]) -> str:
         """Parse the request arguments for the identifier."""
 
 
@@ -73,7 +73,7 @@ class Mmsid(AbsRecordStrategy):
         """
         return server.get_record(identifier, "mmsid")
 
-    def get_identifier(self, args: Mapping) -> str:
+    def get_identifier(self, args: Mapping[str, str]) -> str:
         """Retrieve the mmsid from the args.
 
         Args:
@@ -89,7 +89,7 @@ class Mmsid(AbsRecordStrategy):
 class RecordGetter:
     """Public class for interacting with records from the api record server."""
 
-    def __init__(self, args: Mapping) -> None:
+    def __init__(self, args: Mapping[str, str]) -> None:
         """Interacting with records from the api record server.
 
         Args:
@@ -108,7 +108,7 @@ class RecordGetter:
             f"{self.__repr__()} {self._strategy.__class__.__name__} strategy"
 
     @staticmethod
-    def _get_strategy(args: Mapping) -> Optional[AbsRecordStrategy]:
+    def _get_strategy(args: Mapping[str, str]) -> Optional[AbsRecordStrategy]:
         if "bib_id" in args:
             return Bibid(args)
         if "mms_id" in args:
@@ -134,7 +134,7 @@ class RecordGetter:
             )
         return record
 
-    def get_identifier(self, args: Mapping) -> str:
+    def get_identifier(self, args: Mapping[str, str]) -> str:
         """Parse the request args for the identifier requested, regardless of its type.
 
         Args:

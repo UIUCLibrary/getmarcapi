@@ -3,9 +3,10 @@ import abc
 import os
 from typing import Optional, List
 import configparser
+import flask
 
 
-def get_config(app) -> None:
+def get_config(app: flask.Flask) -> None:
     """Load the app with the correct configurations.
 
     Args:
@@ -114,11 +115,11 @@ class ConfigLoader:
     def __init__(self, strategy: AbcConfigStrategy) -> None:
         self.strategy = strategy
 
-    def get_config_value(self, key: str):
+    def get_config_value(self, key: str) -> Optional[str]:
         return self.strategy.get_config_value(key)
 
 
-def check_config(app) -> bool:
+def check_config(app: flask.Flask) -> bool:
     """Check if the app configuration is valid.
 
     Args:
