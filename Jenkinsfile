@@ -158,9 +158,9 @@ pipeline {
                             echo "Setting up tox tests for ${envs.join(', ')}"
                         }
                     }
+                    def toxStages = get_tox_stages(envs)
                     node(DEFAULT_DOCKER_AGENT_LABELS){
                         def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
-                        def toxStages = get_tox_stages(envs)
                         container.inside(){
                             parallel(toxStages)
                         }
