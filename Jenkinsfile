@@ -13,22 +13,35 @@ def getToxEnvs(){
     }
     return bat(returnStdout: true, script: "@tox -l").trim().split('\n')
 }
+def build_tox_stage(tox_env){
+    if(isUnix()){
+        return [tox_env, {
+            sh( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env --parallel--safe-build")
+            }]
+    return [tox_env, {
+                bat( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env")
+    }]
+    }
+}
 
 def get_tox_stages(envs){
-    def cmds
-    if(isUnix()){
-        cmds = envs.collectEntries({ tox_env ->
-            [tox_env, {
-                sh( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env --parallel--safe-build")
-            }]
-        })
-    } else{
-        cmds = envs.collectEntries({ tox_env ->
-            [tox_env, {
-                bat( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env")
-            }]
-        })
-    }
+    def cmds = envs.collectEntries({ tox_env ->
+        build_tox_stage(tox_env)
+    })
+//     def cmds
+//     if(isUnix()){
+//         cmds = envs.collectEntries({ tox_env ->
+//             [tox_env, {
+//                 sh( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env --parallel--safe-build")
+//             }]
+//         })
+//     } else{
+//         cmds = envs.collectEntries({ tox_env ->
+//             [tox_env, {
+//                 bat( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env")
+//             }]
+//         })
+//     }
     return cmds
 }
 def run_tox_envs(){
