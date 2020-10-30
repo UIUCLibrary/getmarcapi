@@ -138,6 +138,7 @@ pipeline {
             steps{
                 script{
                     def jobs = getToxTestsParallel(DEFAULT_DOCKER_AGENT_LABELS, "ci/docker/python/tox/Dockerfile", DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS)
+                    parallel(jobs)
                 }
             }
         }
