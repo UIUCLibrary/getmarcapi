@@ -160,13 +160,14 @@ pipeline {
                             echo "Setting up tox tests for ${envs.join(', ')}"
                         }
                     }
-                    def moreToxStages = envs.collectEntries({ tox_env ->
-                        script{
-                            {->
-                                build_tox_stage(tox_env)
-                            }
-                        }
-                    })
+                    def moreToxStages = envs.collect{ tox_env ->
+                        tox_env
+//                         script{
+//                             {->
+//                                 build_tox_stage(tox_env)
+//                             }
+//                         }
+                    }
 //                     def moreToxStages = envs.collectEntries({ tox_env ->
 //                         tox_env
 // //                         build_tox_stage(tox_env)
