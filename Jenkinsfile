@@ -175,7 +175,11 @@ pipeline {
                             node(DEFAULT_DOCKER_AGENT_LABELS){
                                 def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
                                 container.inside(){
-                                    build_tox_stage2(tox_env)
+                                    if(isUnix()){
+                                        sh( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env --parallel--safe-build")
+                                    } else {
+                                        bat( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env")
+                                    }
                                 }
                             }
                         }]
