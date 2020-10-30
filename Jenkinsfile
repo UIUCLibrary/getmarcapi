@@ -33,8 +33,8 @@ def getToxTestsParallel(label, dockerfile, dockerArgs){
             checkout scm
             def dockerImageName = "tox${currentBuild.projectName}"
             def container = docker.build(dockerImageName, "-f ${dockerfile} ${dockerArgs} .").inside(){
-                def e = System.properties['os.name']
-                echo "os.name = ${e}"
+                def e = System.getProperty('os.name')
+                echo "e = ${e}"
                 envs = getToxEnvs()
             }
             if(isUnix()){
