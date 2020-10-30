@@ -158,7 +158,7 @@ pipeline {
                             echo "Setting up tox tests for ${envs.join(', ')}"
                         }
                     }
-                    def toxStages = envs.collectEntries({ tox_env ->
+                    def moreToxStages = envs.collectEntries({ tox_env ->
                         echo tox_env
 //                         build_tox_stage(tox_env)
                     })
