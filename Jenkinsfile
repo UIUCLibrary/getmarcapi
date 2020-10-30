@@ -404,7 +404,7 @@ pipeline {
                     }
                     steps{
                         script{
-                            agent(DEFAULT_DOCKER_AGENT_LABELS){
+                            node(DEFAULT_DOCKER_AGENT_LABELS){
                                 def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
                                 def envs
                                 container.inside(){
