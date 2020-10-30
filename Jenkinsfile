@@ -162,7 +162,9 @@ pipeline {
                     }
                     def moreToxStages = envs.collectEntries({ tox_env ->
                         script{
-                            build_tox_stage(tox_env)
+                            {->
+                                build_tox_stage(tox_env)
+                            }
                         }
                     })
 //                     def moreToxStages = envs.collectEntries({ tox_env ->
