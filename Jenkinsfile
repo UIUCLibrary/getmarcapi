@@ -171,12 +171,15 @@ pipeline {
                         }
                     }
                     def toxStages = envs.collectEntries({ tox_env ->
-                        node(DEFAULT_DOCKER_AGENT_LABELS){
-                            def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
-                            container.inside(){
-                                build_tox_stage2(tox_env)
+                        [tox_env,{
+                            node(DEFAULT_DOCKER_AGENT_LABELS){
+                                def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
+                                container.inside(){
+                                    build_tox_stage2(tox_env)
+                                }
                             }
-                        }
+                        }]
+
     //                     def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
     //                         build_tox_stage2(tox_env)
                     })
