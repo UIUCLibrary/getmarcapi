@@ -26,16 +26,13 @@ def get_sonarqube_unresolved_issues(report_task_file){
     }
 }
 
-def getToxTestsParallel(label, dockerfile, dockerArgs){
+def getToxTestsParallel(envNamePrefix, label, dockerfile, dockerArgs){
     script{
         def envs
         node(label){
             checkout scm
             def dockerImageName = "tox${currentBuild.projectName}"
-            def e = System.getProperty('os.name')
-            echo "e = ${e}"
             def container = docker.build(dockerImageName, "-f ${dockerfile} ${dockerArgs} .").inside(){
-
                 envs = getToxEnvs()
             }
             if(isUnix()){
@@ -52,7 +49,7 @@ def getToxTestsParallel(label, dockerfile, dockerArgs){
         }
         echo "Found tox environments for ${envs.join(', ')}"
         return envs.collectEntries({ tox_env ->
-            def jenkinsStageName = tox_env
+            def jenkinsStageName = "${envNamePrefix} ${tox_env}"
             [jenkinsStageName,{
                 node(label){
                     def dockerImageName = "tox${currentBuild.projectName}:${tox_env}"
@@ -171,7 +168,7 @@ pipeline {
 //             }
             steps{
                 script{
-                    def jobs = getToxTestsParallel(DEFAULT_DOCKER_AGENT_LABELS, "ci/docker/python/tox/Dockerfile", DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS)
+                    def jobs = getToxTestsParallel("Linux", DEFAULT_DOCKER_AGENT_LABELS, "ci/docker/python/tox/Dockerfile", DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS)
                     parallel(jobs)
                 }
             }
