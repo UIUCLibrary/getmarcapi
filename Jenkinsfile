@@ -30,20 +30,26 @@ def getToxTestsParallel(label, dockerfile, dockerArgs){
         def envs
         node(label){
             checkout scm
-            def container = docker.build("d", "-f ${dockerfile} ${dockerArgs} .").inside(){
+            def container = docker.build("tox:${currentBuild.projectName}", "-f ${dockerfile} ${dockerArgs} .").inside(){
                 envs = getToxEnvs()
-                echo "Setting up tox tests for ${envs.join(', ')}"
+
             }
         }
+        echo "Found tox environments for ${envs.join(', ')}"
         return envs.collectEntries({ tox_env ->
             [tox_env,{
                 node(label){
-                    def container = docker.build("d", "-f ${dockerfile} ${dockerArgs} . ")
-                    container.inside(){
+                    docker.build("tox:${tox_env}", "-f ${dockerfile} ${dockerArgs} . ").inside(){
                         if(isUnix()){
-                            sh( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env --parallel--safe-build")
+                            sh(
+                                label: "Running Tox with ${tox_env} environment",
+                                script: "tox  -vv --parallel--safe-build -e $tox_env"
+                            )
                         } else {
-                            bat( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env")
+                            bat(
+                                label: "Running Tox with ${tox_env} environment",
+                                script: "tox  -vv --parallel--safe-build -e $tox_env "
+                            )
                         }
                     }
                 }
