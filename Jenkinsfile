@@ -390,9 +390,7 @@ pipeline {
                     }
                 }
                 stage("Tox"){
-                    agent{
-                        label DEFAULT_DOCKER_AGENT_LABELS
-                    }
+
 //                     agent {
 //                         dockerfile {
 //                             filename "ci/docker/python/tox/Dockerfile"
@@ -403,20 +401,22 @@ pipeline {
 //                     }
                     when{
                         equals expected: true, actual: params.TEST_RUN_TOX
-                        beforeAgent true
                     }
                     steps{
                         script{
-                            def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
-                            def envs
-                            container.inside(){
-                                envs = getToxEnvs()
-                                echo "Setting up tox tests for ${envs.join(', ')}"
-                            }
-//                                 echo "Hello"
-                            container.inside(){
-                                parallel(get_tox_stages(envs))
-//                                 run_tox_envs()
+                            agent(DEFAULT_DOCKER_AGENT_LABELS){
+                                def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
+                                def envs
+                                container.inside(){
+                                    envs = getToxEnvs()
+                                    echo "Setting up tox tests for ${envs.join(', ')}"
+                                }
+    //                                 echo "Hello"
+                                container.inside(){
+                                    parallel(get_tox_stages(envs))
+    //                                 run_tox_envs()
+                                }
+
                             }
 
                         }
