@@ -390,20 +390,29 @@ pipeline {
                     }
                 }
                 stage("Tox"){
-                    agent {
-                        dockerfile {
-                            filename "ci/docker/python/tox/Dockerfile"
-                            label DEFAULT_DOCKER_AGENT_LABELS
-                            additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
-
-                        }
+                    agent{
+                        label DEFAULT_DOCKER_AGENT_LABELS
                     }
+//                     agent {
+//                         dockerfile {
+//                             filename "ci/docker/python/tox/Dockerfile"
+//                             label DEFAULT_DOCKER_AGENT_LABELS
+//                             additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+//
+//                         }
+//                     }
                     when{
                         equals expected: true, actual: params.TEST_RUN_TOX
                         beforeAgent true
                     }
                     steps{
-                        run_tox_envs()
+                        script{
+                            def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS}")
+                            container.run(){
+                                run_tox_envs()
+                            }
+
+                        }
                     }
                 }
                 stage("Sonarcloud Analysis"){
