@@ -130,6 +130,35 @@ pipeline {
         booleanParam(name: "DEPLOY_TO_PRODUCTION", defaultValue: false, description: "Deploy to Production Server")
     }
     stages {
+        stage("Tox"){
+//             when{
+//                 equals expected: true, actual: params.TEST_RUN_TOX
+//             }
+            steps{
+                script{
+                    def envs
+                    node(DEFAULT_DOCKER_AGENT_LABELS){
+                        def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
+                        container.inside(){
+                            envs = getToxEnvs()
+                            echo "Setting up tox tests for ${envs.join(', ')}"
+                        }
+                    }
+                    node(DEFAULT_DOCKER_AGENT_LABELS){
+                        def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
+                        def toxStages = get_tox_stages(envs)
+                        toxStages.collectEntries({ toxStage ->
+                            echo "got ${toxStage}"
+                        })
+                        container.inside(){
+                            parallel(toxStages)
+                        }
+
+                    }
+
+                }
+            }
+        }
         stage("Getting Testing Environment Info"){
             agent {
                 dockerfile {
@@ -389,41 +418,7 @@ pipeline {
                         }
                     }
                 }
-                stage("Tox"){
 
-//                     agent {
-//                         dockerfile {
-//                             filename "ci/docker/python/tox/Dockerfile"
-//                             label DEFAULT_DOCKER_AGENT_LABELS
-//                             additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
-//
-//                         }
-//                     }
-                    when{
-                        equals expected: true, actual: params.TEST_RUN_TOX
-                    }
-                    steps{
-                        script{
-                            def envs
-                            node(DEFAULT_DOCKER_AGENT_LABELS){
-                                def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
-                                container.inside(){
-                                    envs = getToxEnvs()
-                                    echo "Setting up tox tests for ${envs.join(', ')}"
-                                }
-                            }
-                            node(DEFAULT_DOCKER_AGENT_LABELS){
-                                def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
-                                container.inside(){
-                                    parallel(get_tox_stages(envs))
-    //                                 run_tox_envs()
-                                }
-
-                            }
-
-                        }
-                    }
-                }
                 stage("Sonarcloud Analysis"){
                     agent {
                         dockerfile {
