@@ -408,9 +408,9 @@ pipeline {
                     steps{
                         script{
                             def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
-                            container.run(){
-                                echo "Hello"
-//                                 run_tox_envs()
+                            container.inside(){
+//                                 echo "Hello"
+                                run_tox_envs()
                             }
 
                         }
