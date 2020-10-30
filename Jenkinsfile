@@ -39,7 +39,8 @@ def getToxTestsParallel(label, dockerfile, dockerArgs){
         return envs.collectEntries({ tox_env ->
             [tox_env,{
                 node(label){
-                    docker.build("tox${currentBuild.projectName}:${tox_env}", "-f ${dockerfile} ${dockerArgs} . ").inside(){
+                    def dockerImageName = "tox${currentBuild.projectName}:${tox_env}"
+                    docker.build("${dockerImageName}", "-f ${dockerfile} ${dockerArgs} . ").inside(){
                         if(isUnix()){
                             sh(
                                 label: "Running Tox with ${tox_env} environment",
