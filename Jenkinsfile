@@ -13,6 +13,16 @@ def getToxEnvs(){
     }
     return bat(returnStdout: true, script: "@tox -l").trim().split('\n')
 }
+def build_tox_stage2(tox_env){
+    return [tox_env, {
+        if(isUnix()){
+            sh( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env --parallel--safe-build")
+        } else {
+            bat( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env")
+        }
+    }]
+
+}
 def build_tox_stage(tox_env){
     script{
         if(isUnix()){
@@ -28,7 +38,8 @@ def build_tox_stage(tox_env){
 
 def get_tox_stages(envs){
     def cmds = envs.collectEntries({ tox_env ->
-        build_tox_stage(tox_env)
+//         build_tox_stage(tox_env)
+        build_tox_stage2(tox_env)
     })
 //     def cmds
 //     if(isUnix()){
@@ -160,24 +171,6 @@ pipeline {
                             echo "Setting up tox tests for ${envs.join(', ')}"
                         }
                     }
-                    def moreToxStages = envs.collect{ tox_env ->
-                        {-> "dddd"}
-//                         tox_env
-//                         script{
-//                             {->
-//                                 build_tox_stage(tox_env)
-//                             }
-//                         }
-                    }
-                    echo "moreToxStages start"
-                    moreToxStages.each{
-                        echo "Got ${it()}"
-                    }
-                    echo "moreToxStages end"
-//                     def moreToxStages = envs.collectEntries({ tox_env ->
-//                         tox_env
-// //                         build_tox_stage(tox_env)
-//                     })
                     node(DEFAULT_DOCKER_AGENT_LABELS){
                         def toxStages = get_tox_stages(envs)
                         def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
