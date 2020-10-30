@@ -25,6 +25,7 @@ def get_sonarqube_unresolved_issues(report_task_file){
         return outstandingIssues
     }
 }
+
 def getToxTestsParallel(label, dockerfile, dockerArgs){
     script{
         def envs
@@ -48,7 +49,8 @@ def getToxTestsParallel(label, dockerfile, dockerArgs){
         }
         echo "Found tox environments for ${envs.join(', ')}"
         return envs.collectEntries({ tox_env ->
-            [tox_env,{
+            def jenkinsStageName = tox_env
+            [jenkinsStageName,{
                 node(label){
                     def dockerImageName = "tox${currentBuild.projectName}:${tox_env}"
                     docker.build("${dockerImageName}", "-f ${dockerfile} ${dockerArgs} . ").inside(){
