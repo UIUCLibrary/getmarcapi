@@ -135,6 +135,7 @@ pipeline {
 //                 equals expected: true, actual: params.TEST_RUN_TOX
 //             }
             steps{
+                checkout scm
                 script{
                     def envs
                     node(DEFAULT_DOCKER_AGENT_LABELS){
