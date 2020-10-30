@@ -168,6 +168,9 @@ pipeline {
 //                             }
 //                         }
                     }
+                    moreToxStages.each{
+                        echo "Got ${it}"
+                    }
 //                     def moreToxStages = envs.collectEntries({ tox_env ->
 //                         tox_env
 // //                         build_tox_stage(tox_env)
