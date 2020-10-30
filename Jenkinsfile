@@ -9,6 +9,7 @@ def getDevPiStagingIndex(){
 
 def getToxEnvs(){
     if(isUnix()){
+        sh "printenv"
         return sh(returnStdout: true, script: "tox -l").trim().split('\n')
     }
     return bat(returnStdout: true, script: "@tox -l").trim().split('\n')
