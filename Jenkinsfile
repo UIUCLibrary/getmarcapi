@@ -161,7 +161,7 @@ pipeline {
                         }
                     }
                     def moreToxStages = envs.collect{ tox_env ->
-                        "dddd"
+                        {-> "dddd"}
 //                         tox_env
 //                         script{
 //                             {->
