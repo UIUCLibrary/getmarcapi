@@ -138,7 +138,7 @@ pipeline {
                 script{
                     def envs
                     node(DEFAULT_DOCKER_AGENT_LABELS){
-                    checkout scm
+                        checkout scm
                         def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
                         container.inside(){
                             envs = getToxEnvs()
@@ -148,9 +148,6 @@ pipeline {
                     node(DEFAULT_DOCKER_AGENT_LABELS){
                         def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
                         def toxStages = get_tox_stages(envs)
-                        toxStages.collectEntries({ toxStage ->
-                            echo "got ${toxStage}"
-                        })
                         container.inside(){
                             parallel(toxStages)
                         }
