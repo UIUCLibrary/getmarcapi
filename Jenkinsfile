@@ -162,17 +162,6 @@ pipeline {
         booleanParam(name: "DEPLOY_TO_PRODUCTION", defaultValue: false, description: "Deploy to Production Server")
     }
     stages {
-        stage("Tox"){
-//             when{
-//                 equals expected: true, actual: params.TEST_RUN_TOX
-//             }
-            steps{
-                script{
-                    def jobs = getToxTestsParallel("Linux", DEFAULT_DOCKER_AGENT_LABELS, "ci/docker/python/tox/Dockerfile", DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS)
-                    parallel(jobs)
-                }
-            }
-        }
         stage("Getting Testing Environment Info"){
             agent {
                 dockerfile {
@@ -432,7 +421,17 @@ pipeline {
                         }
                     }
                 }
-
+                stage("Tox"){
+                    when{
+                        equals expected: true, actual: params.TEST_RUN_TOX
+                    }
+                    steps{
+                        script{
+                            def jobs = getToxTestsParallel("Linux", DEFAULT_DOCKER_AGENT_LABELS, "ci/docker/python/tox/Dockerfile", DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS)
+                            parallel(jobs)
+                        }
+                    }
+                }
                 stage("Sonarcloud Analysis"){
                     agent {
                         dockerfile {
