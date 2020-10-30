@@ -47,6 +47,32 @@ def get_sonarqube_unresolved_issues(report_task_file){
         return outstandingIssues
     }
 }
+def getToxTestsParallel(label, dockerfile, dockerArgs){
+    script{
+        def envs
+        node(label){
+            checkout scm
+            def container = docker.build("d", "-f ${dockerfile} ${dockerArgs} .").inside(){
+                envs = getToxEnvs()
+                echo "Setting up tox tests for ${envs.join(', ')}"
+            }
+        }
+        return envs.collectEntries({ tox_env ->
+            [tox_env,{
+                node(label){
+                    def container = docker.build("d", "-f ${dockerfile} ${dockerArgs} . ")
+                    container.inside(){
+                        if(isUnix()){
+                            sh( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env --parallel--safe-build")
+                        } else {
+                            bat( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env")
+                        }
+                    }
+                }
+            }]
+        })
+    }
+}
 
 def devpiRunTest(pkgPropertiesFile, devpiIndex, devpiSelector, devpiUsername, devpiPassword, toxEnv){
     script{
@@ -133,31 +159,36 @@ pipeline {
 //             }
             steps{
                 script{
-                    def DOCKERFILE = "ci/docker/python/tox/Dockerfile"
-                    def envs
-                    node(DEFAULT_DOCKER_AGENT_LABELS){
-                        checkout scm
-                        def container = docker.build("d", "-f ${DOCKERFILE} ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} .").inside(){
-                            envs = getToxEnvs()
-                            echo "Setting up tox tests for ${envs.join(', ')}"
-                        }
-                    }
-                    def toxStages = envs.collectEntries({ tox_env ->
-                        [tox_env,{
-                            node(DEFAULT_DOCKER_AGENT_LABELS){
-                                def container = docker.build("d", "-f ${DOCKERFILE} ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
-                                container.inside(){
-                                    if(isUnix()){
-                                        sh( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env --parallel--safe-build")
-                                    } else {
-                                        bat( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env")
-                                    }
-                                }
-                            }
-                        }]
-                    })
-                    parallel(toxStages)
+                    def jobs = getToxTestsParallel(DEFAULT_DOCKER_AGENT_LABELS, "ci/docker/python/tox/Dockerfile", DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS)
+                    parallel(jobs)
                 }
+//                 script{
+//
+//                     def DOCKERFILE = "ci/docker/python/tox/Dockerfile"
+//                     def envs
+//                     node(DEFAULT_DOCKER_AGENT_LABELS){
+//                         checkout scm
+//                         def container = docker.build("d", "-f ${DOCKERFILE} ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} .").inside(){
+//                             envs = getToxEnvs()
+//                             echo "Setting up tox tests for ${envs.join(', ')}"
+//                         }
+//                     }
+//                     def toxStages = envs.collectEntries({ tox_env ->
+//                         [tox_env,{
+//                             node(DEFAULT_DOCKER_AGENT_LABELS){
+//                                 def container = docker.build("d", "-f ${DOCKERFILE} ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
+//                                 container.inside(){
+//                                     if(isUnix()){
+//                                         sh( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env --parallel--safe-build")
+//                                     } else {
+//                                         bat( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env")
+//                                     }
+//                                 }
+//                             }
+//                         }]
+//                     })
+//                     parallel(toxStages)
+//                 }
             }
         }
         stage("Getting Testing Environment Info"){
