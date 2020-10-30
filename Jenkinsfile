@@ -408,9 +408,15 @@ pipeline {
                     steps{
                         script{
                             def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
+                            def envs
                             container.inside(){
+                                envs = getToxEnvs()
+                                echo "Setting up tox tests for ${envs.join(', ')}"
+                            }
 //                                 echo "Hello"
-                                run_tox_envs()
+                            container.inside(){
+                                parallel(get_tox_stages(envs))
+//                                 run_tox_envs()
                             }
 
                         }
