@@ -9,7 +9,6 @@ def getDevPiStagingIndex(){
 
 def getToxEnvs(){
     if(isUnix()){
-        sh "printenv"
         return sh(returnStdout: true, script: "tox -l").trim().split('\n')
     }
     return bat(returnStdout: true, script: "@tox -l").trim().split('\n')
@@ -34,6 +33,8 @@ def getToxTestsParallel(label, dockerfile, dockerArgs){
             checkout scm
             def dockerImageName = "tox${currentBuild.projectName}"
             def container = docker.build(dockerImageName, "-f ${dockerfile} ${dockerArgs} .").inside(){
+                def e = System.properties['os.name']
+                echo "os.name = ${e}"
                 envs = getToxEnvs()
             }
             if(isUnix()){
