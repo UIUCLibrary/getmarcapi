@@ -36,34 +36,6 @@ def build_tox_stage(tox_env){
     }
 }
 
-def get_tox_stages(envs){
-    def cmds = envs.collectEntries({ tox_env ->
-        build_tox_stage2(tox_env)
-    })
-//     def cmds
-//     if(isUnix()){
-//         cmds = envs.collectEntries({ tox_env ->
-//             [tox_env, {
-//                 sh( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env --parallel--safe-build")
-//             }]
-//         })
-//     } else{
-//         cmds = envs.collectEntries({ tox_env ->
-//             [tox_env, {
-//                 bat( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env")
-//             }]
-//         })
-//     }
-    return cmds
-}
-def run_tox_envs(){
-    script {
-        def envs = getToxEnvs()
-        echo "Setting up tox tests for ${envs.join(', ')}"
-        parallel(get_tox_stages(envs))
-    }
-}
-
 def get_sonarqube_unresolved_issues(report_task_file){
     script{
         if (! fileExists(report_task_file)){
@@ -161,11 +133,11 @@ pipeline {
 //             }
             steps{
                 script{
+                    def DOCKERFILE = "ci/docker/python/tox/Dockerfile"
                     def envs
                     node(DEFAULT_DOCKER_AGENT_LABELS){
                         checkout scm
-                        def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
-                        container.inside(){
+                        def container = docker.build("d", "-f ${DOCKERFILE} ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} .").inside(){
                             envs = getToxEnvs()
                             echo "Setting up tox tests for ${envs.join(', ')}"
                         }
@@ -173,7 +145,7 @@ pipeline {
                     def toxStages = envs.collectEntries({ tox_env ->
                         [tox_env,{
                             node(DEFAULT_DOCKER_AGENT_LABELS){
-                                def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
+                                def container = docker.build("d", "-f ${DOCKERFILE} ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
                                 container.inside(){
                                     if(isUnix()){
                                         sh( label: "Running Tox with ${tox_env} environment", script: "tox  -vv -e $tox_env --parallel--safe-build")
@@ -183,19 +155,8 @@ pipeline {
                                 }
                             }
                         }]
-
-    //                     def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
-    //                         build_tox_stage2(tox_env)
                     })
                     parallel(toxStages)
-//                     node(DEFAULT_DOCKER_AGENT_LABELS){
-//                         def container = docker.build("d", "-f ci/docker/python/tox/Dockerfile ${DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS} . ")
-//                         container.inside(){
-//                             parallel(toxStages)
-//                         }
-//
-//                     }
-
                 }
             }
         }
