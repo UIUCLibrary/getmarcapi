@@ -203,7 +203,7 @@ def loadToxLibrary(){
         checkout scm
         def tox_lib =  load("${WORKSPACE}/tox.groovy")
         echo "got ${tox_lib}"
-        if( tox_lib == nul){
+        if( tox_lib == null){
             error "Unable to load tox.groovy"
         }
         return tox_lib
