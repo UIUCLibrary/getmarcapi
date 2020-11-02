@@ -201,7 +201,7 @@ def loadToxLibrary(){
 //     stage("Loading Tox library"){
     node(){
         checkout scm
-        def tox_lib =  load("${WORKSPACE}/tox.groovy")
+        def tox_lib =  load("ci/jenkins/scripts")
         echo "got ${tox_lib}"
         if( tox_lib == null){
             error "Unable to load tox.groovy"
