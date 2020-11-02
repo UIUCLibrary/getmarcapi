@@ -55,11 +55,9 @@ def generateToxReport(tox_env, toxResultFile){
 
 
         def errorMessages = []
-//         def foundError = false
         try{
             testEnv["test"].each{
                 if (it['retcode'] != 0){
-                    foundError = true
                     def errorOutput =  it['output']
                     def failedCommand = it['command']
                     errorMessage += "**${failedCommand}**\n${errorOutput}"
