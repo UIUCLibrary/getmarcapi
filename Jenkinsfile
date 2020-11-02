@@ -275,6 +275,7 @@ pipeline {
                 }
             }
             steps{
+                echo "tox = ${startup}"
                 timeout(5){
                     sh(
                         label: "Checking Installed Python Packages",
