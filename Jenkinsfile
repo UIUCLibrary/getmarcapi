@@ -72,7 +72,7 @@ def generateToxReport(tox_env, toxResultFile){
         }
         def resultsReport = "# Results"
         if (errorMessages.size() > 0){
-            resultsReport = resultsReport + "\n" + errorMessage.join("\n") + "\n"
+            resultsReport = resultsReport + "\n" + errorMessages.join("\n") + "\n"
         } else{
             resultsReport = resultsReport + "\n" + "Success\n"
         }
