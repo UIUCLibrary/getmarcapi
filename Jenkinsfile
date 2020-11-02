@@ -197,6 +197,13 @@ def devpiRunTest(pkgPropertiesFile, devpiIndex, devpiSelector, devpiUsername, de
         }
     }
 }
+def loadToxLibrary(){
+    node(){
+        checkout scm
+        return load "tox.groovy"
+    }
+}
+
 def startup(){
     stage("Getting Distribution Info"){
         node('linux && docker') {
@@ -233,7 +240,10 @@ def get_props(metadataFile){
         }
     }
 }
+def tox = loadToxLibrary()
 startup()
+
+
 def props = get_props("getmarcapi.dist-info/METADATA")
 def DEFAULT_DOCKER_AGENT_FILENAME = 'ci/docker/python/linux/Dockerfile'
 def DEFAULT_DOCKER_AGENT_LABELS = 'linux && docker'
