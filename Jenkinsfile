@@ -36,7 +36,8 @@ def getToxEnvs(){
 def generateToxReport(tox_env, toxResultFile){
     try{
         def tox_result = readJSON(file: toxResultFile)
-        def checksReportText = """# Testing Environment
+        def checksReportText = ""
+        def testingEnvReport = """# Testing Environment
 
 **Tox Version:** ${tox_result['toxversion']}
 **Platform:**   ${tox_result['platform']}
@@ -49,14 +50,19 @@ def generateToxReport(tox_env, toxResultFile){
             packageReport =  packageReport + "\n ${it}"
         }
 
-        checksReportText = checksReportText + " \n" + packageReport
+        checksReportText = testingEnvReport + " \n" + packageReport
+//         =========
+
+
+        def errorMessages = []
+//         def foundError = false
         try{
             testEnv["test"].each{
                 if (it['retcode'] != 0){
+                    foundError = true
                     def errorOutput =  it['output']
                     def failedCommand = it['command']
-                    checksReportText = checksReportText + "\n" + "**" + failedCommand + "**" + "\n" + errorOutput
-
+                    errorMessage += "**${failedCommand}**\n${errorOutput}"
                 }
             }
         }
@@ -64,6 +70,14 @@ def generateToxReport(tox_env, toxResultFile){
             echo "unable to parse Error output"
             throw e
         }
+        def resultsReport = "# Results"
+        if (errorMessages.size() > 0){
+            resultsReport = resultsReport + "\n" + errorMessage.join("\n") + "\n"
+        } else{
+            resultsReport = resultsReport + "\n" + "Success\n"
+        }
+//         =========
+        checksReportText = testingEnvReport + " \n" + resultsReport
         return checksReportText
     } catch (e){
         echo "Unable to parse json file, Falling back to reading the file as text. \nReason: ${e}"
