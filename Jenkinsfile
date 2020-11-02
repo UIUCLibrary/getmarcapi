@@ -247,7 +247,8 @@ def get_props(metadataFile){
         }
     }
 }
-def tox = loadToxLibrary()
+def tox = load("ci/jenkins/scripts/tox.groovy")
+// def tox = loadToxLibrary()
 startup()
 
 
