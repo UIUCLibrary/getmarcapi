@@ -319,17 +319,17 @@ pipeline {
                                 }
                                 stage("Running Tests"){
                                     parallel {
-                                        stage("PyTest"){
-                                            steps{
-                                                sh "coverage run --parallel-mode --source getmarcapi -m pytest --junitxml=reports/pytest/junit-pytest.xml "
-                                            }
-                                            post {
-                                                always {
-                                                    junit "reports/pytest/junit-pytest.xml"
-                                                    stash includes: "reports/pytest/*.xml", name: 'PYTEST_REPORT'
-                                                }
-                                            }
-                                        }
+//                                         stage("PyTest"){
+//                                             steps{
+//                                                 sh "coverage run --parallel-mode --source getmarcapi -m pytest --junitxml=reports/pytest/junit-pytest.xml "
+//                                             }
+//                                             post {
+//                                                 always {
+//                                                     junit "reports/pytest/junit-pytest.xml"
+//                                                     stash includes: "reports/pytest/*.xml", name: 'PYTEST_REPORT'
+//                                                 }
+//                                             }
+//                                         }
             //                         stage("Doctest"){
             //                             steps {
             //                                 sh "coverage run --parallel-mode --source getmarcapi -m sphinx -b doctest -d build/docs/doctrees docs reports/doctest -w logs/doctest.log"
