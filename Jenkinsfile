@@ -210,8 +210,17 @@ def loadToxLibrary(){
     }
 //     }
 }
-
+def tox
 def startup(){
+    node(){
+        checkout scm
+        def tox_lib =  load("ci/jenkins/scripts/tox.groovy")
+        if( tox_lib == null){
+            error "Unable to load tox.groovy"
+        }
+        tox = load("ci/jenkins/scripts/tox.groovy")
+    }
+
     stage("Getting Distribution Info"){
         node('linux && docker') {
             docker.image('python:3.8').inside {
@@ -247,7 +256,7 @@ def get_props(metadataFile){
         }
     }
 }
-def tox = load("ci/jenkins/scripts/tox.groovy")
+
 // def tox = loadToxLibrary()
 startup()
 
