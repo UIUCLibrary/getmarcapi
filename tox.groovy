@@ -11,6 +11,57 @@ def getToxEnvs(){
     return envs
 }
 
+def generateToxReport(tox_env, toxResultFile){
+    try{
+        def tox_result = readJSON(file: toxResultFile)
+        def checksReportText = ""
+
+        def testingEnvReport = """# Testing Environment
+
+**Tox Version:** ${tox_result['toxversion']}
+**Platform:**   ${tox_result['platform']}
+"""
+
+        def testEnv = tox_result['testenvs'][tox_env]
+
+        def packageReport = "\n**Installed Packages:**"
+        testEnv['installed_packages'].each{
+            packageReport =  packageReport + "\n ${it}"
+        }
+
+        checksReportText = testingEnvReport + " \n" + packageReport
+//         =========
+
+
+        def errorMessages = []
+        try{
+            testEnv["test"].each{
+                if (it['retcode'] != 0){
+                    echo "Found error ${it}"
+                    def errorOutput =  it['output']
+                    def failedCommand = it['command']
+                    errorMessages += "**${failedCommand}**\n${errorOutput}"
+                }
+            }
+        }
+        catch (e) {
+            echo "unable to parse Error output"
+            throw e
+        }
+        def resultsReport = "# Results"
+        if (errorMessages.size() > 0){
+            resultsReport = resultsReport + "\n" + errorMessages.join("\n") + "\n"
+        } else{
+            resultsReport = resultsReport + "\n" + "Success\n"
+        }
+//         =========
+        checksReportText = testingEnvReport + " \n" + resultsReport
+        return checksReportText
+    } catch (e){
+        echo "Unable to parse json file, Falling back to reading the file as text. \nReason: ${e}"
+        return readFile(toxResultFile)
+    }
+}
 
 def getToxTestsParallel(envNamePrefix, label, dockerfile, dockerArgs){
     script{
