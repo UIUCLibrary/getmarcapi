@@ -62,7 +62,7 @@ def generateToxReport(tox_env, toxResultFile){
                     echo "Found error ${it}"
                     def errorOutput =  it['output']
                     def failedCommand = it['command']
-                    errorMessage += "**${failedCommand}**\n${errorOutput}"
+                    errorMessages += "**${failedCommand}**\n${errorOutput}"
                 }
             }
         }
