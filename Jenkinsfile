@@ -54,8 +54,8 @@ def generateToxReport(tox_env, toxResultFile){
             testEnv["test"].each{
                 if (it['retcode'] != 0){
                     def errorOutput =  it['output']
-                    echo "errorOutput = ${errorOutput}"
-                    checksReportText = checksReportText + "\n" + errorOutput
+                    def failedCommand = it['command']
+                    checksReportText = checksReportText + "\n" + "**" + failedCommand + "**" + "\n" + errorOutput
 
                 }
             }
