@@ -199,7 +199,7 @@ def devpiRunTest(pkgPropertiesFile, devpiIndex, devpiSelector, devpiUsername, de
 }
 def loadToxLibrary(){
 //     stage("Loading Tox library"){
-    node('linux'){
+    node(){
         checkout scm
         def tox_lib =  load("ci/jenkins/scripts/tox.groovy")
         echo "got ${tox_lib}"
