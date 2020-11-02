@@ -36,7 +36,7 @@ def getToxEnvs(){
 def generateToxReport(tox_env, toxResultFile){
     try{
         def tox_result = readJSON(file: toxResultFile)
-        def checksReportText = """#Testing Environment
+        def checksReportText = """# Testing Environment
 
                                   **Tox Version:** ${tox_result['toxversion']}
                                   **Platform:**   ${tox_result['platform']}
