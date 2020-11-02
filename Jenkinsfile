@@ -198,12 +198,14 @@ def devpiRunTest(pkgPropertiesFile, devpiIndex, devpiSelector, devpiUsername, de
     }
 }
 def loadToxLibrary(){
-    stage("Loading Tox library"){
-        node(){
-            checkout scm
-            return load("tox.groovy")
-        }
+//     stage("Loading Tox library"){
+    node(){
+        checkout scm
+        def tox_lib =  load("${WORKSPACE}/tox.groovy")
+        echo "got  ${tox_lib}"
+        return tox_lib
     }
+//     }
 }
 
 def startup(){
@@ -275,7 +277,6 @@ pipeline {
                 }
             }
             steps{
-                echo "tox = ${startup}"
                 timeout(5){
                     sh(
                         label: "Checking Installed Python Packages",
