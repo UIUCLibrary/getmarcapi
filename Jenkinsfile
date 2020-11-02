@@ -42,20 +42,20 @@ def generateToxReport(tox_env, toxResultFile){
                                   **Platform:**   ${tox_result['platform']}
                                   """
 
+        def testEnv = tox_result['testenvs'][tox_env]
+
         def packageReport = "\n**Installed Packages:**"
-        tox_result['testenvs'][tox_env]['installed_packages'].each{
+        testEnv['installed_packages'].each{
             packageReport =  packageReport + "\n ${it}"
         }
-        echo "packageReport = ${packageReport}"
-        tox_result['testenvs'][tox_env].each{
-            echo "${it}"
-        }
-        checksReportText = checksReportText +" \n" + packageReport
 
-      return checksReportText
+        checksReportText = checksReportText +" \n" + packageReport
+        if (testEnv["test"]['retcode'] != 0){
+            checksReportText = checksReportText + "\n" + testEnv["test"]['output']
+        }
+        return checksReportText
     } catch (e){
         return readFile(toxResultFile)
-
     }
 }
 
