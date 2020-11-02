@@ -42,4 +42,4 @@ def test_get_record_xml(monkeypatch, client):
 
 def test_get_record_missing_param(client):
     rc = client.get('/api/record')
-    assert rc.status_code == 422
+    assert rc.status_code == 421
