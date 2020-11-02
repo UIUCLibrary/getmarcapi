@@ -36,11 +36,13 @@ def getToxEnvs(){
 def generateToxReport(tox_env, toxResultFile){
     try{
         def tox_result = readJSON(file: toxResultFile)
-        def checksReportText = """**Tox Version:** ${tox_result['toxversion']}
+        def checksReportText = """#Testing Environment
+
+                                  **Tox Version:** ${tox_result['toxversion']}
                                   **Platform:**   ${tox_result['platform']}
                                   """
 
-        def packageReport = "\n**Installed Packages: **"
+        def packageReport = "\n**Installed Packages:**"
         tox_result['testenvs'][tox_env]['installed_packages'].each{
             packageReport =  packageReport + "\n ${it}"
         }
