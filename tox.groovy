@@ -150,3 +150,4 @@ def getToxTestsParallel(envNamePrefix, label, dockerfile, dockerArgs){
         return jobs
     }
 }
+return this
