@@ -125,7 +125,7 @@ def getToxTestsParallel(envNamePrefix, label, dockerfile, dockerArgs){
                             publishChecks(
                                 name: githubChecksName,
                                 summary: 'Use Tox to test installed package',
-                                text: "${tox_result}",
+                                text: generateToxReport(tox_env, 'tox_result.json'),
                                 conclusion: 'FAILURE',
                                 title: 'Failed'
                             )
