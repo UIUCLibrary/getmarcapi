@@ -37,6 +37,7 @@ def generateToxReport(tox_env, toxResultFile){
     try{
         def tox_result = readJSON(file: toxResultFile)
         def checksReportText = ""
+
         def testingEnvReport = """# Testing Environment
 
 **Tox Version:** ${tox_result['toxversion']}
@@ -58,6 +59,7 @@ def generateToxReport(tox_env, toxResultFile){
         try{
             testEnv["test"].each{
                 if (it['retcode'] != 0){
+                    echo "Found error" ${it}"
                     def errorOutput =  it['output']
                     def failedCommand = it['command']
                     errorMessage += "**${failedCommand}**\n${errorOutput}"
