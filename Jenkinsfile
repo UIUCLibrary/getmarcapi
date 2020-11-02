@@ -7,13 +7,6 @@ def getDevPiStagingIndex(){
     }
 }
 
-def getToxEnvs(){
-    if(isUnix()){
-        return sh(returnStdout: true, script: "tox -l").trim().split('\n')
-    }
-    return bat(returnStdout: true, script: "@tox -l").trim().split('\n')
-}
-
 def get_sonarqube_unresolved_issues(report_task_file){
     script{
         if (! fileExists(report_task_file)){
@@ -26,60 +19,122 @@ def get_sonarqube_unresolved_issues(report_task_file){
     }
 }
 
+
+def getToxEnvs(){
+    def envs
+    if(isUnix()){
+        envs = sh(returnStdout: true, script: "tox -l").trim().split('\n')
+    } else{
+        envs = bat(returnStdout: true, script: "@tox -l").trim().split('\n')
+    }
+    envs.collect{
+        it.trim()
+    }
+    return envs
+}
+
+def generateToxReport(tox_env, toxResultFile){
+    try{
+        def tox_result = readJSON(file: toxResultFile)
+        def checksReportText = """Tox Version: ${tox_result['toxversion']}
+                                  Platform:   ${tox_result['platform']}
+                                  """
+
+        tox_result['testenvs'][tox_env].each{
+            echo "${it}"
+        }
+      return checksReportText
+    } catch (e){
+        return readFile(toxResultFile)
+
+    }
+}
+
 def getToxTestsParallel(envNamePrefix, label, dockerfile, dockerArgs){
     script{
         def envs
+        def originalNodeLabel
         node(label){
+            originalNodeLabel = env.NODE_NAME
             checkout scm
             def dockerImageName = "tox${currentBuild.projectName}"
-            def container = docker.build(dockerImageName, "-f ${dockerfile} ${dockerArgs} .").inside(){
+            def dockerImage = docker.build(dockerImageName, "-f ${dockerfile} ${dockerArgs} .")
+            echo "dockerImage.id = ${dockerImage.id}"
+            dockerImage.inside{
                 envs = getToxEnvs()
             }
             if(isUnix()){
                 sh(
                     label: "Removing Docker Image used to run tox",
-                    script: "docker image rm -f ${dockerImageName}"
+                    script: "docker image ls ${dockerImageName}"
                 )
             } else {
                 bat(
                     label: "Removing Docker Image used to run tox",
-                    script: "docker image rm -f ${dockerImageName}"
+                    script: """docker image ls ${dockerImageName}
+                               """
                 )
             }
         }
         echo "Found tox environments for ${envs.join(', ')}"
-        return envs.collectEntries({ tox_env ->
+        def dockerImageForTesting
+        node(originalNodeLabel){
+            def dockerImageName = "tox"
+            checkout scm
+            dockerImageForTesting = docker.build(dockerImageName, "-f ${dockerfile} ${dockerArgs} . ")
+
+        }
+        echo "Adding jobs to ${originalNodeLabel} with ${dockerImageForTesting}"
+        def jobs = envs.collectEntries({ tox_env ->
+            def tox_result
+            def githubChecksName = "Tox: ${tox_env} ${envNamePrefix}"
             def jenkinsStageName = "${envNamePrefix} ${tox_env}"
+
             [jenkinsStageName,{
-                node(label){
-                    def dockerImageName = "tox${currentBuild.projectName}:${tox_env}"
-                    docker.build("${dockerImageName}", "-f ${dockerfile} ${dockerArgs} . ").inside(){
-                        if(isUnix()){
-                            sh(
-                                label: "Running Tox with ${tox_env} environment",
-                                script: "tox  -vv --parallel--safe-build -e $tox_env"
+                node(originalNodeLabel){
+                    checkout scm
+                    dockerImageForTesting.inside{
+                        try{
+                            publishChecks(
+                                conclusion: 'NONE',
+                                name: githubChecksName,
+                                status: 'IN_PROGRESS',
+                                summary: 'Use Tox to test installed package',
+                                title: 'Running Tox'
                             )
-                        } else {
-                            bat(
-                                label: "Running Tox with ${tox_env} environment",
-                                script: "tox  -vv --parallel--safe-build -e $tox_env "
+                            if(isUnix()){
+                                sh(
+                                    label: "Running Tox with ${tox_env} environment",
+                                    script: "tox  -vv --parallel--safe-build --result-json=tox_result.json -e $tox_env"
+                                )
+                            } else {
+                                bat(
+                                    label: "Running Tox with ${tox_env} environment",
+                                    script: "tox  -vv --parallel--safe-build --result-json=tox_result.json -e $tox_env "
+                                )
+                            }
+                        } catch (e){
+                            publishChecks(
+                                name: githubChecksName,
+                                summary: 'Use Tox to test installed package',
+                                text: "${tox_result}",
+                                conclusion: 'FAILURE',
+                                title: 'Failed'
                             )
+                            throw e
                         }
-                    }
-                    if(isUnix()){
-                        sh(
-                            label: "Removing Docker Image used to run tox",
-                            script: "docker image rm -f ${dockerImageName}"
-                        )
-                    } else {
-                        bat(
-                            label: "Removing Docker Image used to run tox",
-                            script: "docker image rm -f ${dockerImageName}"
-                        )
+                        def checksReportText = generateToxReport(tox_env, 'tox_result.json')
+                        publishChecks(
+                                name: githubChecksName,
+                                summary: 'Use Tox to test installed package',
+                                text: "${checksReportText}",
+                                title: 'Passed'
+                            )
                     }
                 }
             }]
         })
+        return jobs
     }
 }
 
