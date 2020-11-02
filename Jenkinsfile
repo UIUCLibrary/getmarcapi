@@ -593,7 +593,8 @@ pipeline {
                     }
                     steps{
                         script{
-                            def jobs = getToxTestsParallel("Linux", DEFAULT_DOCKER_AGENT_LABELS, "ci/docker/python/tox/Dockerfile", DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS)
+                            def tox = load "tox.groovy"
+                            def jobs = tox.getToxTestsParallel("Linux", DEFAULT_DOCKER_AGENT_LABELS, "ci/docker/python/tox/Dockerfile", DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS)
                             parallel(jobs)
                         }
                     }
