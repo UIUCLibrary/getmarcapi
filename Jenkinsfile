@@ -131,6 +131,7 @@ def getToxTestsParallel(envNamePrefix, label, dockerfile, dockerArgs){
                             throw e
                         }
                         def checksReportText = generateToxReport(tox_env, 'tox_result.json')
+                        echo "publishing \n${checksReportText}"
                         publishChecks(
                                 name: githubChecksName,
                                 summary: 'Use Tox to test installed package',
