@@ -36,11 +36,11 @@ def getToxEnvs(){
 def generateToxReport(tox_env, toxResultFile){
     try{
         def tox_result = readJSON(file: toxResultFile)
-        def checksReportText = """Tox Version: ${tox_result['toxversion']}
-                                  Platform:   ${tox_result['platform']}
+        def checksReportText = """**Tox Version:** ${tox_result['toxversion']}
+                                  **Platform:**   ${tox_result['platform']}
                                   """
 
-        def packageReport = "\nInstalled Packages: "
+        def packageReport = "\**nInstalled Packages: **"
         tox_result['testenvs'][tox_env]['installed_packages'].each{
             packageReport =  packageReport + "\n ${it}"
         }
@@ -66,7 +66,6 @@ def getToxTestsParallel(envNamePrefix, label, dockerfile, dockerArgs){
             checkout scm
             def dockerImageName = "tox${currentBuild.projectName}"
             def dockerImage = docker.build(dockerImageName, "-f ${dockerfile} ${dockerArgs} .")
-            echo "dockerImage.id = ${dockerImage.id}"
             dockerImage.inside{
                 envs = getToxEnvs()
             }
