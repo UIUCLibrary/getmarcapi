@@ -57,6 +57,7 @@ def generateToxReport(tox_env, toxResultFile){
         }
         return checksReportText
     } catch (e){
+        echo "${e}"
         return readFile(toxResultFile)
     }
 }
