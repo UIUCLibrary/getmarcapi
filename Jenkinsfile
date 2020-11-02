@@ -198,9 +198,11 @@ def devpiRunTest(pkgPropertiesFile, devpiIndex, devpiSelector, devpiUsername, de
     }
 }
 def loadToxLibrary(){
-    node(){
-        checkout scm
-        return load "tox.groovy"
+    stage("Getting Distribution Info"){
+        node(){
+            checkout scm
+            return load("tox.groovy")
+        }
     }
 }
 
