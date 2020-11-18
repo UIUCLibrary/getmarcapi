@@ -197,6 +197,7 @@ def devpiRunTest(pkgPropertiesFile, devpiIndex, devpiSelector, devpiUsername, de
         }
     }
 }
+
 def loadToxLibrary(){
 //     stage("Loading Tox library"){
     node(){
@@ -223,22 +224,25 @@ def startup(){
 
     stage("Getting Distribution Info"){
         node('linux && docker') {
-            docker.image('python:3.8').inside {
-                timeout(2){
-                    try{
-                        checkout scm
-                        sh(
-                           label: "Running setup.py with dist_info",
-                           script: """python --version
-                                      python setup.py dist_info
-                                   """
-                        )
-                        stash includes: "*.dist-info/**", name: 'DIST-INFO'
-                        archiveArtifacts artifacts: "*.dist-info/**"
-                    } finally{
-                        deleteDir()
+            ws{
+                checkout scm
+                try{
+                    docker.image('python:3.8').inside {
+                        timeout(2){    
+                            
+                            sh(
+                            label: "Running setup.py with dist_info",
+                            script: """python --version
+                                        python setup.py dist_info
+                                    """
+                            )
+                            stash includes: "*.dist-info/**", name: 'DIST-INFO'
+                            archiveArtifacts artifacts: "*.dist-info/**"
+                        } 
                     }
-                }
+                } finally{
+                    deleteDir()
+                } 
             }
         }
     }
@@ -257,7 +261,6 @@ def get_props(metadataFile){
     }
 }
 
-// def tox = loadToxLibrary()
 startup()
 
 
@@ -298,49 +301,47 @@ pipeline {
                 }
             }
         }
-//         stage("Sphinx Documentation"){
-//             agent{
-//                 dockerfile {
-//                         filename 'ci/docker/python/linux/Dockerfile'
-//                         label 'linux && docker'
-//                         additionalBuildArgs "--build-arg USER_ID=\$(id -u) --build-arg GROUP_ID=\$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
-//                     }
-//                 }
-//                 steps {
-//                     sh(
-//                         label: "Building docs",
-//                         script: '''mkdir -p logs
-//                                    python -m sphinx docs build/docs/html -d build/docs/.doctrees -w logs/build_sphinx.log
-//                                    '''
-//                         )
-//                 }
-//                 post{
-//                     always {
-//                         recordIssues(tools: [sphinxBuild(pattern: 'logs/build_sphinx.log')])
-//                     }
-//                     success{
-//                         publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'build/docs/html', reportFiles: 'index.html', reportName: 'Documentation', reportTitles: ''])
-//                         unstash "DIST-INFO"
-//                         script{
-//                             def props = readProperties interpolate: false, file: "getmarcapi.dist-info/METADATA"
-//                             def DOC_ZIP_FILENAME = "${props.Name}-${props.Version}.doc.zip"
-//                             zip archive: true, dir: "${WORKSPACE}/build/docs/html", glob: '', zipFile: "dist/${DOC_ZIP_FILENAME}"
-//                             stash includes: "dist/${DOC_ZIP_FILENAME},build/docs/html/**", name: 'DOCS_ARCHIVE'
-//                         }
-// 
-//                     }
-//                     cleanup{
-//                         cleanWs(
-//                             patterns: [
-//                                 [pattern: 'logs/', type: 'INCLUDE'],
-//                                 [pattern: "build/docs/", type: 'INCLUDE'],
-//                                 [pattern: "dist/", type: 'INCLUDE']
-//                             ],
-//                             deleteDirs: true
-//                         )
-//                     }
-//                 }
-//             }
+        stage("Sphinx Documentation"){
+            agent{
+                dockerfile {
+                        filename 'ci/docker/python/linux/Dockerfile'
+                        label 'linux && docker'
+                        additionalBuildArgs "--build-arg USER_ID=\$(id -u) --build-arg GROUP_ID=\$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
+                }
+            }
+            steps {
+                sh(
+                    label: "Building docs",
+                    script: '''mkdir -p logs
+                               python -m sphinx docs build/docs/html -d build/docs/.doctrees -w logs/build_sphinx.log
+                               '''
+                    )
+            }
+            post{
+                always {
+                    recordIssues(tools: [sphinxBuild(pattern: 'logs/build_sphinx.log')])
+                }
+                success{
+                    publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'build/docs/html', reportFiles: 'index.html', reportName: 'Documentation', reportTitles: ''])
+                    script{
+                        def DOC_ZIP_FILENAME = "${props.Name}-${props.Version}.doc.zip"
+                        zip archive: true, dir: "${WORKSPACE}/build/docs/html", glob: '', zipFile: "dist/${DOC_ZIP_FILENAME}"
+                        stash includes: "dist/${DOC_ZIP_FILENAME},build/docs/html/**", name: 'DOCS_ARCHIVE'
+                    }
+
+                }
+                cleanup{
+                    cleanWs(
+                        patterns: [
+                            [pattern: 'logs/', type: 'INCLUDE'],
+                            [pattern: "build/docs/", type: 'INCLUDE'],
+                            [pattern: "dist/", type: 'INCLUDE']
+                        ],
+                        deleteDirs: true
+                    )
+                }
+            }
+        }
         stage("Checks") {
             when{
                 equals expected: true, actual: params.RUN_CHECKS
@@ -620,10 +621,6 @@ pipeline {
                     }
                     steps{
                         script{
-//                             node(){
-//                                 checkout scm
-//                                 tox = load "tox.groovy"
-//                             }
                             def jobs = tox.getToxTestsParallel("Linux", DEFAULT_DOCKER_AGENT_LABELS, "ci/docker/python/tox/Dockerfile", DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS)
                             parallel(jobs)
                         }
