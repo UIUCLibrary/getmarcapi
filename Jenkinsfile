@@ -7,13 +7,6 @@ def getDevPiStagingIndex(){
     }
 }
 
-def getToxEnvs(){
-    if(isUnix()){
-        return sh(returnStdout: true, script: "tox -l").trim().split('\n')
-    }
-    return bat(returnStdout: true, script: "@tox -l").trim().split('\n')
-}
-
 def get_sonarqube_unresolved_issues(report_task_file){
     script{
         if (! fileExists(report_task_file)){
@@ -26,62 +19,6 @@ def get_sonarqube_unresolved_issues(report_task_file){
     }
 }
 
-def getToxTestsParallel(envNamePrefix, label, dockerfile, dockerArgs){
-    script{
-        def envs
-        node(label){
-            checkout scm
-            def dockerImageName = "tox${currentBuild.projectName}"
-            def container = docker.build(dockerImageName, "-f ${dockerfile} ${dockerArgs} .").inside(){
-                envs = getToxEnvs()
-            }
-            if(isUnix()){
-                sh(
-                    label: "Removing Docker Image used to run tox",
-                    script: "docker image rm -f ${dockerImageName}"
-                )
-            } else {
-                bat(
-                    label: "Removing Docker Image used to run tox",
-                    script: "docker image rm -f ${dockerImageName}"
-                )
-            }
-        }
-        echo "Found tox environments for ${envs.join(', ')}"
-        return envs.collectEntries({ tox_env ->
-            def jenkinsStageName = "${envNamePrefix} ${tox_env}"
-            [jenkinsStageName,{
-                node(label){
-                    def dockerImageName = "tox${currentBuild.projectName}:${tox_env}"
-                    docker.build("${dockerImageName}", "-f ${dockerfile} ${dockerArgs} . ").inside(){
-                        if(isUnix()){
-                            sh(
-                                label: "Running Tox with ${tox_env} environment",
-                                script: "tox  -vv --parallel--safe-build -e $tox_env"
-                            )
-                        } else {
-                            bat(
-                                label: "Running Tox with ${tox_env} environment",
-                                script: "tox  -vv --parallel--safe-build -e $tox_env "
-                            )
-                        }
-                    }
-                    if(isUnix()){
-                        sh(
-                            label: "Removing Docker Image used to run tox",
-                            script: "docker image rm -f ${dockerImageName}"
-                        )
-                    } else {
-                        bat(
-                            label: "Removing Docker Image used to run tox",
-                            script: "docker image rm -f ${dockerImageName}"
-                        )
-                    }
-                }
-            }]
-        })
-    }
-}
 
 def devpiRunTest(pkgPropertiesFile, devpiIndex, devpiSelector, devpiUsername, devpiPassword, toxEnv){
     script{
@@ -107,24 +44,39 @@ def devpiRunTest(pkgPropertiesFile, devpiIndex, devpiSelector, devpiUsername, de
         }
     }
 }
+def loadHelper(file){
+    node(){
+        checkout scm
+        helper =  load(file)
+        if( helper == null){
+            error "Unable to load ${file}"
+        }
+        return helper
+    }
+}
+def tox = loadHelper("ci/jenkins/scripts/tox.groovy")
+
 def startup(){
     stage("Getting Distribution Info"){
         node('linux && docker') {
-            docker.image('python:3.8').inside {
-                timeout(2){
-                    try{
-                        checkout scm
-                        sh(
-                           label: "Running setup.py with dist_info",
-                           script: """python --version
-                                      python setup.py dist_info
-                                   """
-                        )
-                        stash includes: "*.dist-info/**", name: 'DIST-INFO'
-                        archiveArtifacts artifacts: "*.dist-info/**"
-                    } finally{
-                        deleteDir()
+            ws{
+                checkout scm
+                try{
+                    docker.image('python:3.8').inside {
+                        timeout(2){
+
+                            sh(
+                            label: "Running setup.py with dist_info",
+                            script: """python --version
+                                        python setup.py dist_info
+                                    """
+                            )
+                            stash includes: "*.dist-info/**", name: 'DIST-INFO'
+                            archiveArtifacts artifacts: "*.dist-info/**"
+                        }
                     }
+                } finally{
+                    deleteDir()
                 }
             }
         }
@@ -255,7 +207,7 @@ pipeline {
                                     parallel {
                                         stage("PyTest"){
                                             steps{
-                                                sh "coverage run --parallel-mode --source getmarcapi -m pytest --junitxml=reports/pytest/junit-pytest.xml "
+                                                sh script: "coverage run --parallel-mode --source getmarcapi -m pytest --junitxml=reports/pytest/junit-pytest.xml ", returnStatus: true
                                             }
                                             post {
                                                 always {
@@ -501,7 +453,7 @@ pipeline {
                     }
                     steps{
                         script{
-                            def jobs = getToxTestsParallel("Linux", DEFAULT_DOCKER_AGENT_LABELS, "ci/docker/python/tox/Dockerfile", DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS)
+                            def jobs = tox.getToxTestsParallel("Linux", DEFAULT_DOCKER_AGENT_LABELS, "ci/docker/python/tox/Dockerfile", DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS)
                             parallel(jobs)
                         }
                     }

@@ -4,7 +4,7 @@ RUN python -m pip install pip --upgrade && \
     pip install --upgrade setuptools && \
     pip install wheel pep517
 COPY getmarcapi /src/getmarcapi/
-COPY pyproject.toml README.rst setup.cfg setup.py   /src/
+COPY pyproject.toml README.rst setup.cfg setup.py MANIFEST.in  /src/
 WORKDIR /src
 
 ARG PIP_INDEX_URL
