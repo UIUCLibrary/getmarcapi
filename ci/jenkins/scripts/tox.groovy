@@ -70,7 +70,7 @@ def getToxTestsParallel(envNamePrefix, label, dockerfile, dockerArgs){
         node(label){
             originalNodeLabel = env.NODE_NAME
             checkout scm
-            def dockerImageName = "tox${currentBuild.projectName}"
+            def dockerImageName = "tox${currentBuild.projectName}".replaceAll("-", "").toLowerCase()
             def dockerImage = docker.build(dockerImageName, "-f ${dockerfile} ${dockerArgs} .")
             dockerImage.inside{
                 envs = getToxEnvs()
