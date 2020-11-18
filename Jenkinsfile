@@ -197,16 +197,20 @@ def devpiRunTest(pkgPropertiesFile, devpiIndex, devpiSelector, devpiUsername, de
         }
     }
 }
-
-def tox
-def startup(){
+def loadHelper(file){
     node(){
         checkout scm
-        tox =  load("ci/jenkins/scripts/tox.groovy")
-        if( tox == null){
-            error "Unable to load tox.groovy"
+        helper =  load(file)
+        if( helper == null){
+            error "Unable to load ${file}"
         }
+        return helper
     }
+}
+def tox = loadHelper("ci/jenkins/scripts/tox.groovy")
+
+def startup(){
+
 
     stage("Getting Distribution Info"){
         node('linux && docker') {
@@ -253,7 +257,8 @@ startup()
 def props = get_props("getmarcapi.dist-info/METADATA")
 def DEFAULT_DOCKER_AGENT_FILENAME = 'ci/docker/python/linux/Dockerfile'
 def DEFAULT_DOCKER_AGENT_LABELS = 'linux && docker'
-def DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release --build-arg PIP_EXTRA_INDEX_URL'
+def DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release --build-arg PIP_EXTRA_INDEX_URL'
+// def DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release --build-arg PIP_EXTRA_INDEX_URL'
 
 pipeline {
     agent none
@@ -279,6 +284,12 @@ pipeline {
                 }
             }
             steps{
+                echo "tox ======= > ${tox}"
+                script{
+                    if (tox == null){
+                        error "Failed to get tox"
+                    }
+                }
                 timeout(5){
                     sh(
                         label: "Checking Installed Python Packages",
