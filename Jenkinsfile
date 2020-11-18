@@ -198,28 +198,14 @@ def devpiRunTest(pkgPropertiesFile, devpiIndex, devpiSelector, devpiUsername, de
     }
 }
 
-def loadToxLibrary(){
-//     stage("Loading Tox library"){
-    node(){
-        checkout scm
-        def tox_lib =  load("ci/jenkins/scripts/tox.groovy")
-        echo "got ${tox_lib}"
-        if( tox_lib == null){
-            error "Unable to load tox.groovy"
-        }
-        return tox_lib
-    }
-//     }
-}
 def tox
 def startup(){
     node(){
         checkout scm
-        def tox_lib =  load("ci/jenkins/scripts/tox.groovy")
-        if( tox_lib == null){
+        tox =  load("ci/jenkins/scripts/tox.groovy")
+        if( tox == null){
             error "Unable to load tox.groovy"
         }
-        tox = load("ci/jenkins/scripts/tox.groovy")
     }
 
     stage("Getting Distribution Info"){
