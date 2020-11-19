@@ -12,27 +12,9 @@
     <section class="container">
         <h1 class="cover-heading">Get Marc API</h1>
         <p class="lead">API for retrieving University of Illinois Library marc records</p>
-        <h3>Examples</h3>
-        <div class="container">
-            <div class="row row-cols-3">
-                <div class="col border bg-light">
-                    Retrieve the marc record for bibid 100
-                </div>
-                <div class="col-6 border bg-light">
-                    <code>{{ url_for("record_api", bib_id=100)}}</code>
-                </div>
-                <div class="col border bg-light">
-                    Retrieve the marc record for mms_id 9910012205899
-                </div>
-                <div class="col-6 border bg-light">
-                    <code>{{ url_for("record_api", mms_id=9910012205899)}}</code>
-                </div>
-            </div>
-
-        </div>
-{#        <ul>#}
-{#            <li>/li>#}
-{#        </ul>#}
+        <p>
+            {% include 'info.html' %}
+        </p>
     </section>
 </main>
 <header>
