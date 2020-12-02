@@ -51,6 +51,12 @@ def arg_issues(args: Mapping[str, str]) -> Optional[Tuple[str, int]]:
 
 @app.route('/api', endpoint="api_documentation")
 def api_documentation():
+    """API documentation in json format.
+
+    Returns:
+        API documentation in json format
+
+    """
     ignored_rules = ['static']
 
     def serialize(data):
