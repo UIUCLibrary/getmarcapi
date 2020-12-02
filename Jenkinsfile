@@ -105,7 +105,7 @@ pipeline {
     agent none
     parameters {
         booleanParam(name: "RUN_CHECKS", defaultValue: true, description: "Run checks on code")
-        booleanParam(name: "TEST_RUN_TOX", defaultValue: false, description: "Run Tox Tests")
+        booleanParam(name: "TEST_RUN_TOX", defaultValue: true, description: "Run Tox Tests")
         booleanParam(name: "USE_SONARQUBE", defaultValue: true, description: "Send data test data to SonarQube")
         booleanParam(name: "BUILD_PACKAGES", defaultValue: false, description: "Build Python packages")
         booleanParam(name: "DEPLOY_DEVPI", defaultValue: false, description: "Deploy to devpi on http://devpi.library.illinois.edu/DS_Jenkins/${env.BRANCH_NAME}")
@@ -180,6 +180,9 @@ pipeline {
             }
             stages{
                 stage("Code Quality Checks"){
+                    when{
+                        equals expected: true, actual: false
+                    }
                     stages{
                         stage("Run Code Quality Checks"){
                             agent {
@@ -809,7 +812,9 @@ pipeline {
 
                                         docker.withServer(CONFIG['docker']['server']['apiUrl'], "DOCKER_TYKO"){
                                             def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", "${build_args} .")
-                                            sh "docker stop ${container_name}"
+                                            sh(script: "docker stop ${container_name}",
+                                                returnStatus: true,
+                                            )
                                             dockerImage.run("${container_ports_arg} --name ${container_name} --rm")
                                         }
                                     }
