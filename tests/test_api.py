@@ -43,3 +43,33 @@ def test_get_record_xml(monkeypatch, client):
 def test_get_record_missing_param(client):
     rc = client.get('/api/record')
     assert rc.status_code == 422
+
+
+def test_api_documentation(client):
+    rc = client.get('/api')
+    assert rc.status_code == 200
+
+
+def pytest_generate_tests(metafunc):
+    app = getmarcapi.app
+    if "route" in metafunc.fixturenames:
+        app.config['testing'] = True
+        app.config['API_DOMAIN'] = "testing"
+        app.config['API_KEY'] = "NA"
+        routes_to_skip = ['/api/record']
+        with app.test_client() as client:
+            rc = client.get('/api')
+            metafunc.parametrize(
+                "route",
+                filter(lambda x: x not in routes_to_skip,
+                       map(lambda x: x['route'], rc.json)
+                       )
+            )
+
+        del app.config['API_DOMAIN']
+        del app.config['API_KEY']
+
+
+def test_api_documentation_valid_endpoints(route, client):
+    rc = client.get(route)
+    assert rc.status_code == 200
