@@ -1,0 +1,71 @@
+<div class="container">
+    <div class="row border-top border-bottom">
+        <p>
+            This is a web service used to retrieve marc records data from
+            University of Illinois Library given a Bib Id, or MMS ID.
+        </p>
+        <p>
+            The URL format is as
+            follows:
+            <code>/api/record?{query}</code>.
+        </p>
+        <p>
+            This will retrieve a MARC Record corresponding to the given
+            identifier query.
+            The identifier in the query can be one of the following:
+        </p>
+        <dl class="row">
+            <dt class="col-sm-1">Bib ID</dt>
+            <dd class="col-sm-11">
+                <p>
+                    This was the most common way to retrieve a MARC record
+                    until the switch to ALMA and focusing on MMS ID.
+                </p>
+                <p>
+                    Format: <code>mms_id={id}</code>
+                </p>
+            </dd>
+
+            <dt class="col-sm-1">MMS ID</dt>
+            <dd class="col-sm-11">
+                <p>
+                    Identifier assigned by ALMA. This is now the default
+                </p>
+                <code>bib_id={id}</code>
+            </dd>
+        </dl>
+    </div>
+
+    <div class="row">
+        <div class="col col-sm-6">
+            <h2>Here are some examples:</h2>
+            <div class="row">
+                <div class="col-sm">
+                    <h3><small>Retrieve records based on a Bib Id</small></h3>
+                    <div class="row bg-light">
+                        <ul>
+                            <li>
+                                <a href="{{ url_for('record_api', bib_id=100) }}"><code>{{ url_for("record_api", bib_id=100) }}</code></a>
+                            </li>
+                            <li>
+                                <a href="{{ url_for('record_api', bib_id=12345) }}"><code>{{ url_for("record_api", bib_id=12345) }}</code></a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm">
+                    <h3><small>Retrieve records based on an MMS ID</small></h3>
+                    <div class="row bg-light">
+                        <ul>
+                            <li>
+                                <a href="{{ url_for('record_api', mms_id=9910012205899) }}"><code>{{ url_for('record_api', mms_id=9910012205899) }}</code></a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
