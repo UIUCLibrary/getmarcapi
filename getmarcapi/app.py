@@ -4,7 +4,7 @@ import sys
 import argparse
 from typing import Tuple, Optional, Mapping
 
-from flask import Flask, Response, request, render_template
+from flask import Flask, Response, request, render_template, jsonify
 from uiucprescon import getmarc2
 from uiucprescon.getmarc2 import modifiers  # type: ignore
 from .records import RecordGetter
@@ -47,6 +47,23 @@ def arg_issues(args: Mapping[str, str]) -> Optional[Tuple[str, int]]:
         return "Missing bib_id or mms_id request", 422
 
     return None
+
+
+@app.route('/api', endpoint="api_documentation")
+def api_documentation():
+    ignored_rules = ['static']
+
+    def serialize(data):
+        return {
+            "route": str(data),
+            "methods": list(data.methods),
+        }
+
+    results = list(
+        map(serialize, filter(lambda x: x.endpoint not in ignored_rules,
+                              app.url_map.iter_rules()))
+    )
+    return jsonify(results)
 
 
 @app.route('/api/record', endpoint="record_api")
