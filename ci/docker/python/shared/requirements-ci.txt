@@ -12,3 +12,4 @@ sphinx
 sphinxcontrib.spelling
 tox
 uiucprescon.getmarc2>=0.0.1b4
+importlib_metadata>=3.1.1; python<3.8
