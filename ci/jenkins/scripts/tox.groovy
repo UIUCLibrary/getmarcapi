@@ -248,6 +248,8 @@ def getToxTestsParallel(args = [:]){
                                 patterns: [
                                     [pattern: TOX_RESULT_FILE_NAME, type: 'INCLUDE'],
                                     [pattern: ".tox/", type: 'INCLUDE'],
+                                    [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                    [pattern: '*.egg-info/', type: 'INCLUDE'],
                                 ]
                             )
                         }
