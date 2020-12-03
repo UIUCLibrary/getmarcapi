@@ -105,7 +105,7 @@ pipeline {
     agent none
     parameters {
         booleanParam(name: "RUN_CHECKS", defaultValue: true, description: "Run checks on code")
-        booleanParam(name: "TEST_RUN_TOX", defaultValue: true, description: "Run Tox Tests")
+        booleanParam(name: "TEST_RUN_TOX", defaultValue: false, description: "Run Tox Tests")
         booleanParam(name: "USE_SONARQUBE", defaultValue: true, description: "Send data test data to SonarQube")
         booleanParam(name: "BUILD_PACKAGES", defaultValue: false, description: "Build Python packages")
         booleanParam(name: "DEPLOY_DEVPI", defaultValue: false, description: "Deploy to devpi on http://devpi.library.illinois.edu/DS_Jenkins/${env.BRANCH_NAME}")
@@ -180,9 +180,6 @@ pipeline {
             }
             stages{
                 stage("Code Quality Checks"){
-                    when{
-                        equals expected: true, actual: false
-                    }
                     stages{
                         stage("Run Code Quality Checks"){
                             agent {
@@ -456,7 +453,13 @@ pipeline {
                     }
                     steps{
                         script{
-                            def jobs = tox.getToxTestsParallel("Linux", DEFAULT_DOCKER_AGENT_LABELS, "ci/docker/python/tox/Dockerfile", DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS)
+//                             def jobs = tox.getToxTestsParallel("Linux", DEFAULT_DOCKER_AGENT_LABELS, "ci/docker/python/tox/Dockerfile", DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS)
+                            def jobs = tox.getToxTestsParallel(
+                                                envNamePrefix: "Linux",
+                                                label: DEFAULT_DOCKER_AGENT_LABELS,
+                                                dockerfile: 'ci/docker/python/tox/Dockerfile',
+                                                dockerArgs: DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+                                         )
                             parallel(jobs)
                         }
                     }
