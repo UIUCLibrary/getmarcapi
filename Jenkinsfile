@@ -180,9 +180,6 @@ pipeline {
             }
             stages{
                 stage("Code Quality Checks"){
-                    when{
-                        equals expected: true, actual: false
-                    }
                     stages{
                         stage("Run Code Quality Checks"){
                             agent {
