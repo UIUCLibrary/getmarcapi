@@ -846,7 +846,7 @@ pipeline {
 //                                                 def container_name = container_config['name']
                                                 def container_ports_arg = container_config['ports'] .collect{"-p ${it}"}.join(" ")
                                                 docker.withServer(CONFIG['docker']['server']['apiUrl'], "DOCKER_TYKO"){
-                                                    if(REMOVE_EXISTING_CONTAINER){
+                                                    if(REMOVE_EXISTING_CONTAINER == true){
                                                         sh( label:"Stopping ${CONTAINER_NAME}", script: "docker stop ${CONTAINER_NAME}", returnStatus: true)
                                                     }
                                                     docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
