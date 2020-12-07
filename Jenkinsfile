@@ -793,8 +793,12 @@ pipeline {
                             }
                             input {
                                 message 'Deploy to to server'
+                                parameters {
+                                    string defaultValue: env.BUILD_ID, description: '', name: 'DOCKER_TAG', trim: true
+                                  }
                             }
                             steps{
+                                echo "using ${DOCKER_TAG} for the docker tag"
                                 script{
                                     withCredentials([string(credentialsId: 'ALMA_API_KEY', variable: 'API_KEY')]) {
                                         writeFile(
