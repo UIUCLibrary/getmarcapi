@@ -826,8 +826,14 @@ pipeline {
                                     agent{
                                         label "linux && docker"
                                     }
+`                                    input {
+                                        message 'Deploy to live server?'
+                                        parameters {
+                                            string defaultValue: "getmarc2", description: 'Name of Docker container to use', name: 'CONTAINER_NAME', trim: true
+                                        }
+                                    }
                                     options{
-//                                         timeout(time: 1, unit: 'DAYS')
+                                        timeout(time: 1, unit: 'DAYS')
                                         retry(3)
                                     }
                                     steps{
@@ -835,12 +841,12 @@ pipeline {
                                             configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
                                                 def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
                                                 def container_config = CONFIG['docker']['container']
-                                                def container_name = container_config['name']
+//                                                 def container_name = container_config['name']
                                                 def container_ports_arg = container_config['ports'] .collect{"-p ${it}"}.join(" ")
                                                 docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
                                                     docker.withServer(CONFIG['docker']['server']['apiUrl'], "DOCKER_TYKO"){
                                                         def dockerImage = docker.image("${CONFIG['docker']['server']['registry'].replace('http://', '')}/${IMAGE_NAME}:${DOCKER_TAG}")
-                                                        dockerImage.run("${container_ports_arg} --name ${container_name} --rm")
+                                                        dockerImage.run("${container_ports_arg} --name ${CONTAINER_NAME} --rm")
                                                     }
                                                 }
                                             }
