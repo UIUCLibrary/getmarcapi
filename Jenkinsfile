@@ -835,6 +835,7 @@ pipeline {
                                                 docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
                                                     docker.withServer(CONFIG['docker']['server']['apiUrl'], "DOCKER_TYKO"){
                                                         echo "HERE"
+                                                        docker.image("getmarcapi:${DOCKER_TAG}")
 //                                                         docker.image("getmarcapi:${DOCKER_TAG}").run("${container_ports_arg} --name ${container_name} --rm")
                                                     }
                                                 }
