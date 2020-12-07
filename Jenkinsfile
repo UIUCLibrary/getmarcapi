@@ -811,6 +811,7 @@ pipeline {
                                         def build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(" ")
                                         docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
                                             def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", "${build_args} .")
+                                            dockerImage.push()
                                         }
 //                                         def container_config = CONFIG['docker']['container']
 //                                         def container_name = container_config['name']
