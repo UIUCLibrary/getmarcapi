@@ -834,10 +834,9 @@ pipeline {
                                                 def container_ports_arg = container_config['ports'] .collect{"-p ${it}"}.join(" ")
                                                 docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
                                                     docker.withServer(CONFIG['docker']['server']['apiUrl'], "DOCKER_TYKO"){
-                                                        echo "HERE"
                                                         def dockerImage = docker.image("getmarcapi:${DOCKER_TAG}")
                                                         echo "dockerImage id = ${dockerImage.id}"
-//                                                         docker.image("getmarcapi:${DOCKER_TAG}").run("${container_ports_arg} --name ${container_name} --rm")
+                                                        dockerImage.run("${container_ports_arg} --name ${container_name} --rm")
                                                     }
                                                 }
                                             }
