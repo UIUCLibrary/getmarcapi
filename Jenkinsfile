@@ -826,6 +826,10 @@ pipeline {
                                     agent{
                                         label "linux && docker"
                                     }
+                                    options{
+//                                         timeout(time: 1, unit: 'DAYS')
+                                        retry(3)
+                                    }
                                     steps{
                                         script{
                                             configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
