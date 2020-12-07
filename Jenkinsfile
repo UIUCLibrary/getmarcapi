@@ -782,51 +782,61 @@ pipeline {
                 }
                 stage("Additional Deploy") {
                     parallel{
-                        stage("Deploy to Production"){
+                        stage("Deploy Docker"){
                             when{
                                 equals expected: true, actual: params.DEPLOY_TO_PRODUCTION
                                 beforeAgent true
                                 beforeInput true
                             }
-                            agent{
-                                label "linux && docker"
-                            }
                             input {
                                 message 'Deploy to to server'
                                 parameters {
-                                    string defaultValue: env.BUILD_ID, description: '', name: 'DOCKER_TAG', trim: true
-                                  }
+                                    string defaultValue: env.BUILD_ID, description: 'Tag associated with the docker image', name: 'DOCKER_TAG', trim: true
+                                }
                             }
-                            steps{
-                                script{
-                                    withCredentials([string(credentialsId: 'ALMA_API_KEY', variable: 'API_KEY')]) {
-                                        writeFile(
-                                            file: 'api.cfg',
-                                            text: """[ALMA_API]
-                                                     API_DOMAIN=https://api-na.hosted.exlibrisgroup.com
-                                                     API_KEY=${API_KEY}
-                                                     """
-                                            )
+                            stages{
+                                stage("Deploy to Private Docker Registry"){
+                                    agent{
+                                        label "linux && docker"
                                     }
-                                    configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
-                                        def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
-                                        echo "Got ${CONFIG}"
-                                        def build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(" ")
-                                        docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
-                                            def dockerImage = docker.build("getmarcapi:${DOCKER_TAG}", "${build_args} .")
-                                            dockerImage.push()
+                                    steps{
+                                        script{
+                                            withCredentials([string(credentialsId: 'ALMA_API_KEY', variable: 'API_KEY')]) {
+                                                writeFile(
+                                                    file: 'api.cfg',
+                                                    text: """[ALMA_API]
+                                                             API_DOMAIN=https://api-na.hosted.exlibrisgroup.com
+                                                             API_KEY=${API_KEY}
+                                                             """
+                                                    )
+                                            }
+                                            configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
+                                                def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
+                                                def build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(" ")
+                                                docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
+                                                    def dockerImage = docker.build("getmarcapi:${DOCKER_TAG}", "${build_args} .")
+                                                    dockerImage.push()
+                                                }
+                                            }
                                         }
-//                                         def container_config = CONFIG['docker']['container']
-//                                         def container_name = container_config['name']
-//                                         def container_ports_arg = container_config['ports'] .collect{"-p ${it}"}.join(" ")
-//
-//                                         docker.withServer(CONFIG['docker']['server']['apiUrl'], "DOCKER_TYKO"){
-//                                             def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", "${build_args} .")
-//                                             sh(script: "docker stop ${container_name}",
-//                                                 returnStatus: true,
-//                                             )
-//                                             dockerImage.run("${container_ports_arg} --name ${container_name} --rm")
-//                                         }
+                                    }
+                                }
+                                stage("Deploy to Production server"){
+                                    agent{
+                                        label "linux && docker"
+                                    }
+                                    steps{
+                                        script{
+                                            configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
+                                                def container_config = CONFIG['docker']['container']
+                                                def container_name = container_config['name']
+                                                def container_ports_arg = container_config['ports'] .collect{"-p ${it}"}.join(" ")
+                                                def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
+                                                docker.withServer(CONFIG['docker']['server']['apiUrl'], "DOCKER_TYKO"){
+                                                    docker.image("getmarcapi:${DOCKER_TAG}").run("${container_ports_arg} --name ${container_name} --rm")
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
