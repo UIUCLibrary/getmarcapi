@@ -850,7 +850,10 @@ pipeline {
                                                         sh( label:"Stopping ${CONTAINER_NAME}", script: "docker stop ${CONTAINER_NAME}", returnStatus: true)
                                                     }
                                                     docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
-                                                        def dockerImage = docker.image("${CONFIG['docker']['server']['registry'].replace('http://', '')}/${IMAGE_NAME}:${DOCKER_TAG}")
+                                                        def imageName =  "${CONFIG['docker']['server']['registry'].replace('http://', '')}/${IMAGE_NAME}:${DOCKER_TAG}"
+                                                        echo "RUNNING image ${imageName}"
+                                                        def dockerImage = docker.image(imageName)
+//                                                         def dockerImage = docker.image("${CONFIG['docker']['server']['registry'].replace('http://', '')}/${IMAGE_NAME}:${DOCKER_TAG}")
                                                         dockerImage.run("${container_ports_arg} --name ${CONTAINER_NAME} --rm")
                                                     }
                                                 }
