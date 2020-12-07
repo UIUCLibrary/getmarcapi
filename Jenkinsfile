@@ -791,7 +791,8 @@ pipeline {
                             input {
                                 message 'Deploy to to server'
                                 parameters {
-                                    string defaultValue: env.BUILD_ID, description: 'Tag associated with the docker image', name: 'DOCKER_TAG', trim: true
+                                    string defaultValue: props.Version, description: 'Tag associated with the docker image', name: 'DOCKER_TAG', trim: true
+                                    string defaultValue: "getmarcapi", description: 'Name used for the image by Docker', name: 'IMAGE_NAME', trim: true
                                 }
                             }
                             stages{
@@ -814,7 +815,7 @@ pipeline {
                                                 def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
                                                 def build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(" ")
                                                 docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
-                                                    def dockerImage = docker.build("getmarcapi:${DOCKER_TAG}", "${build_args} .")
+                                                    def dockerImage = docker.build("${IMAGE_NAME}:${DOCKER_TAG}", "${build_args} .")
                                                     dockerImage.push()
                                                 }
                                             }
@@ -834,8 +835,7 @@ pipeline {
                                                 def container_ports_arg = container_config['ports'] .collect{"-p ${it}"}.join(" ")
                                                 docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
                                                     docker.withServer(CONFIG['docker']['server']['apiUrl'], "DOCKER_TYKO"){
-                                                        def dockerImage = docker.image("getmarcapi:${DOCKER_TAG}")
-                                                        echo "dockerImage id = ${dockerImage.id}"
+                                                        def dockerImage = docker.image("${IMAGE_NAME}:${DOCKER_TAG}")
                                                         dockerImage.run("${container_ports_arg} --name ${container_name} --rm")
                                                     }
                                                 }
