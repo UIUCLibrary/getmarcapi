@@ -845,12 +845,12 @@ pipeline {
                                                 def container_config = CONFIG['docker']['container']
 //                                                 def container_name = container_config['name']
                                                 def container_ports_arg = container_config['ports'] .collect{"-p ${it}"}.join(" ")
-                                                docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
-                                                    docker.withServer(CONFIG['docker']['server']['apiUrl'], "DOCKER_TYKO"){
+                                                docker.withServer(CONFIG['docker']['server']['apiUrl'], "DOCKER_TYKO"){
+                                                    if(REMOVE_EXISTING_CONTAINER){
+                                                        sh( label:"Stopping ${CONTAINER_NAME}", script: "docker stop ${CONTAINER_NAME}", returnStatus: true)
+                                                    }
+                                                    docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
                                                         def dockerImage = docker.image("${CONFIG['docker']['server']['registry'].replace('http://', '')}/${IMAGE_NAME}:${DOCKER_TAG}")
-                                                        if(REMOVE_EXISTING_CONTAINER){
-                                                            sh( label:"Stopping ${CONTAINER_NAME}", script: "docker stop ${CONTAINER_NAME}", returnStatus: true)
-                                                        }
                                                         dockerImage.run("${container_ports_arg} --name ${CONTAINER_NAME} --rm")
                                                     }
                                                 }
