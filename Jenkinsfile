@@ -805,11 +805,11 @@ pipeline {
                                                      """
                                             )
                                     }
+                                    def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
                                     withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
                                         def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", "${build_args} .")
                                     }
 //                                     configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
-//                                         def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
 //                                         echo "Got ${CONFIG}"
 //                                         def build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(" ")
 //                                         def container_config = CONFIG['docker']['container']
