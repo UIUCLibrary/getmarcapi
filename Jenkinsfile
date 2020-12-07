@@ -830,6 +830,7 @@ pipeline {
                                         message 'Deploy to live server?'
                                         parameters {
                                             string defaultValue: "getmarc2", description: 'Name of Docker container to use', name: 'CONTAINER_NAME', trim: true
+                                            booleanParam defaultValue: true, description: 'Remove any containers with the same name first', name: 'REMOVE_EXISTING_CONTAINER'
                                         }
                                     }
                                     options{
@@ -846,6 +847,9 @@ pipeline {
                                                 docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
                                                     docker.withServer(CONFIG['docker']['server']['apiUrl'], "DOCKER_TYKO"){
                                                         def dockerImage = docker.image("${CONFIG['docker']['server']['registry'].replace('http://', '')}/${IMAGE_NAME}:${DOCKER_TAG}")
+                                                        if(REMOVE_EXISTING_CONTAINER){
+                                                            sh( label:"Stopping ${CONTAINER_NAME}", script: "docker stop ${CONTAINER_NAME}", returnStatus: true)
+                                                        }
                                                         dockerImage.run("${container_ports_arg} --name ${CONTAINER_NAME} --rm")
                                                     }
                                                 }
