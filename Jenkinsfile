@@ -809,7 +809,7 @@ pipeline {
                                         def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
                                         echo "Got ${CONFIG}"
                                         def build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(" ")
-                                        withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
+                                        docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
                                             def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", "${build_args} .")
                                         }
 //                                         def container_config = CONFIG['docker']['container']
