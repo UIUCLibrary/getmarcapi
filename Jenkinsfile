@@ -828,10 +828,10 @@ pipeline {
                                     steps{
                                         script{
                                             configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
+                                                def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
                                                 def container_config = CONFIG['docker']['container']
                                                 def container_name = container_config['name']
                                                 def container_ports_arg = container_config['ports'] .collect{"-p ${it}"}.join(" ")
-                                                def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
                                                 docker.withServer(CONFIG['docker']['server']['apiUrl'], "DOCKER_TYKO"){
                                                     docker.image("getmarcapi:${DOCKER_TAG}").run("${container_ports_arg} --name ${container_name} --rm")
                                                 }
