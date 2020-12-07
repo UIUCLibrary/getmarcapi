@@ -798,7 +798,6 @@ pipeline {
                                   }
                             }
                             steps{
-                                echo "using ${DOCKER_TAG} for the docker tag"
                                 script{
                                     withCredentials([string(credentialsId: 'ALMA_API_KEY', variable: 'API_KEY')]) {
                                         writeFile(
@@ -814,7 +813,7 @@ pipeline {
                                         echo "Got ${CONFIG}"
                                         def build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(" ")
                                         docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
-                                            def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", "${build_args} .")
+                                            def dockerImage = docker.build("getmarcapi:${DOCKER_TAG}", "${build_args} .")
                                             dockerImage.push()
                                         }
 //                                         def container_config = CONFIG['docker']['container']
