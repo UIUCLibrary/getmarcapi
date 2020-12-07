@@ -68,7 +68,7 @@ def startup(){
                             sh(
                             label: "Running setup.py with dist_info",
                             script: """python --version
-                                        python setup.py dist_info
+                                       python setup.py dist_info
                                     """
                             )
                             stash includes: "*.dist-info/**", name: 'DIST-INFO'
@@ -817,6 +817,7 @@ pipeline {
                                                 docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
                                                     def dockerImage = docker.build("${IMAGE_NAME}:${DOCKER_TAG}", "${build_args} .")
                                                     dockerImage.push()
+                                                    dockerImage.push("latest")
                                                 }
                                             }
                                         }
