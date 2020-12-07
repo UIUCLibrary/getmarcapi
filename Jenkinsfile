@@ -805,22 +805,25 @@ pipeline {
                                                      """
                                             )
                                     }
-                                    configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
-                                        def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
-                                        echo "Got ${CONFIG}"
-                                        def build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(" ")
-                                        def container_config = CONFIG['docker']['container']
-                                        def container_name = container_config['name']
-                                        def container_ports_arg = container_config['ports'] .collect{"-p ${it}"}.join(" ")
-
-                                        docker.withServer(CONFIG['docker']['server']['apiUrl'], "DOCKER_TYKO"){
-                                            def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", "${build_args} .")
-                                            sh(script: "docker stop ${container_name}",
-                                                returnStatus: true,
-                                            )
-                                            dockerImage.run("${container_ports_arg} --name ${container_name} --rm")
-                                        }
+                                    withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
+                                        def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", "${build_args} .")
                                     }
+//                                     configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
+//                                         def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
+//                                         echo "Got ${CONFIG}"
+//                                         def build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(" ")
+//                                         def container_config = CONFIG['docker']['container']
+//                                         def container_name = container_config['name']
+//                                         def container_ports_arg = container_config['ports'] .collect{"-p ${it}"}.join(" ")
+//
+//                                         docker.withServer(CONFIG['docker']['server']['apiUrl'], "DOCKER_TYKO"){
+//                                             def dockerImage = docker.build("getmarcapi:${env.BUILD_ID}", "${build_args} .")
+//                                             sh(script: "docker stop ${container_name}",
+//                                                 returnStatus: true,
+//                                             )
+//                                             dockerImage.run("${container_ports_arg} --name ${container_name} --rm")
+//                                         }
+//                                     }
                                 }
                             }
                         }
