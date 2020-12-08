@@ -842,18 +842,18 @@ pipeline {
                                             configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
                                                 def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
                                                 def container_config = CONFIG['docker']['container']
-//                                                 def container_name = container_config['name']
                                                 def container_ports_arg = container_config['ports'] .collect{"-p ${it}"}.join(" ")
                                                 docker.withServer(CONFIG['docker']['server']['apiUrl'], "DOCKER_TYKO"){
                                                     if(REMOVE_EXISTING_CONTAINER == true){
-                                                        sh( label:"Stopping ${CONTAINER_NAME}", script: "docker stop ${CONTAINER_NAME}", returnStatus: true)
+                                                        sh(
+                                                           label:"Stopping ${CONTAINER_NAME}",
+                                                           script: "docker stop ${CONTAINER_NAME}",
+                                                           returnStatus: true
+                                                        )
                                                     }
                                                     docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
                                                         def imageName =  "${CONFIG['docker']['server']['registry'].replace('http://', '')}/${IMAGE_NAME}:${DOCKER_TAG}"
-                                                        echo "RUNNING image ${imageName}"
-                                                        def dockerImage = docker.image(imageName)
-//                                                         def dockerImage = docker.image("${CONFIG['docker']['server']['registry'].replace('http://', '')}/${IMAGE_NAME}:${DOCKER_TAG}")
-                                                        dockerImage.run("${container_ports_arg} --name ${CONTAINER_NAME} --rm")
+                                                        docker.image(imageName).run("${container_ports_arg} --name ${CONTAINER_NAME} --rm")
                                                     }
                                                 }
                                             }
