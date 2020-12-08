@@ -453,7 +453,6 @@ pipeline {
                     }
                     steps{
                         script{
-//                             def jobs = tox.getToxTestsParallel("Linux", DEFAULT_DOCKER_AGENT_LABELS, "ci/docker/python/tox/Dockerfile", DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS)
                             def jobs = tox.getToxTestsParallel(
                                                 envNamePrefix: "Linux",
                                                 label: DEFAULT_DOCKER_AGENT_LABELS,
