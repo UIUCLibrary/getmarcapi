@@ -840,20 +840,19 @@ pipeline {
                                     steps{
                                         script{
                                             configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
-                                                def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
-                                                def container_config = CONFIG['docker']['container']
-                                                def container_ports_arg = container_config['ports'] .collect{"-p ${it}"}.join(" ")
-                                                docker.withServer(CONFIG['docker']['server']['apiUrl'], "DOCKER_TYKO"){
+                                                def CONFIG = readJSON(file: CONFIG_FILE).deploy
+                                                docker.withServer(CONFIG.docker.server.apiUrl, "DOCKER_TYKO"){
                                                     if(REMOVE_EXISTING_CONTAINER == true){
                                                         sh(
-                                                           label:"Stopping ${CONTAINER_NAME}",
+                                                           label:"Stopping ${CONTAINER_NAME} if exists",
                                                            script: "docker stop ${CONTAINER_NAME}",
                                                            returnStatus: true
                                                         )
                                                     }
-                                                    docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
-                                                        def imageName =  "${CONFIG['docker']['server']['registry'].replace('http://', '')}/${IMAGE_NAME}:${DOCKER_TAG}"
-                                                        docker.image(imageName).run("${container_ports_arg} --name ${CONTAINER_NAME} --rm")
+                                                    docker.withRegistry(CONFIG.docker.server.registry, 'jenkins-nexus'){
+                                                        def imageName =  CONFIG.docker.server.registry.replace('http://', '') + "/${IMAGE_NAME}:${DOCKER_TAG}"
+                                                        def containerPortsArg = CONFIG.docker.container.ports.collect{"-p ${it}"}.join(" ")
+                                                        docker.image(imageName).run("${containerPortsArg} --name ${CONTAINER_NAME} --rm")
                                                     }
                                                 }
                                             }
