@@ -79,6 +79,9 @@ def get_record() -> Response:
     Returns:
         XML data
 
+    .. versionchanged:: 0.0.2
+        955 field not added by default. Only added with &enhance=955* added.
+
     """
     issue = arg_issues(request.args)
     if issue:
@@ -106,15 +109,17 @@ def get_record() -> Response:
 
         header = {"x-api-version": "v1"}
         app.logger.info(f"Retrieved record for {identifier}")
+        enhancements = request.args.getlist('enhance')
 
-        if 'bib_id' in request.args:
-            field_adder = modifiers.Add955()
-            bibid = request.args["bib_id"]
-            field_adder.bib_id = bibid
-            if "v" in bibid:
-                field_adder.contains_v = True
+        if "955" in enhancements:
+            if 'bib_id' in request.args:
+                field_adder = modifiers.Add955()
+                bibid = request.args["bib_id"]
+                field_adder.bib_id = bibid
+                if "v" in bibid:
+                    field_adder.contains_v = True
 
-            metadata_record = field_adder.enrich(metadata_record)
+                metadata_record = field_adder.enrich(metadata_record)
 
         return \
             Response(metadata_record, headers=header, content_type="text/xml")
