@@ -254,9 +254,8 @@ pipeline {
                                         stage("MyPy") {
                                             steps{
                                                 catchError(buildResult: 'SUCCESS', message: 'mypy found issues', stageResult: 'UNSTABLE') {
-                                                    sh "stubgen -p uiucprescon.getmarc2 -o ./stubs"
-                                                    sh "MYPYPATH=${WORKSPACE}/stubs mypy -p getmarcapi --namespace-packages"
-                                                    sh "MYPYPATH=${WORKSPACE}/stubs mypy -p getmarcapi --namespace-packages --html-report reports/mypy/html/ > logs/mypy.log"
+                                                    sh "mypy -p getmarcapi --namespace-packages"
+                                                    sh "mypy -p getmarcapi --namespace-packages --html-report reports/mypy/html/ > logs/mypy.log"
                                                 }
                                             }
                                             post {
