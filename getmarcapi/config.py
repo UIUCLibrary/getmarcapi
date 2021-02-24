@@ -5,6 +5,8 @@ from typing import Optional, List
 import configparser
 import flask
 
+__all__ = ["get_config"]
+
 
 def get_config(app: flask.Flask) -> None:
     """Load the app with the correct configurations.
