@@ -61,6 +61,8 @@ def api_documentation() -> Response:
     ignored_rules = ['static']
 
     class SerializedRoute(TypedDict):
+        """Method listing for a route."""
+
         route: str
         methods: List[str]
 
