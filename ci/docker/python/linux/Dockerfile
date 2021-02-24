@@ -42,3 +42,6 @@ ENV PIP_FIND_LINKS=/wheels
 
 RUN pip install --no-index --no-cache-dir --find-links=/wheels \
     -r /tmp/requirements-ci.txt
+
+ENV MYPYPATH=/mypystubs
+RUN stubgen -p uiucprescon.getmarc2 -o $MYPYPATH
