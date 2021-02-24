@@ -254,7 +254,7 @@ pipeline {
                                         stage("MyPy") {
                                             steps{
                                                 catchError(buildResult: 'SUCCESS', message: 'mypy found issues', stageResult: 'UNSTABLE') {
-                                                    sh "mypy -p getmarcapi"
+                                                    // Note: this misses the uiucprescon.getmarc2 namespace package stubs because of this issue https://github.com/python/mypy/issues/10045
                                                     sh "mypy -p getmarcapi --html-report reports/mypy/html/ > logs/mypy.log"
                                                 }
                                             }
