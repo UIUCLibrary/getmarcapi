@@ -2,16 +2,17 @@
 import logging
 import sys
 import argparse
-from typing import Tuple, Optional, Mapping
+from typing import Tuple, Optional, Mapping, Callable, TypedDict, List
 
 from flask import Flask, Response, request, render_template, jsonify
+from werkzeug.routing import Rule
 from uiucprescon import getmarc2
-from uiucprescon.getmarc2 import modifiers  # type: ignore
+from uiucprescon.getmarc2 import modifiers
 from .records import RecordGetter
 
 from . import config
 
-app = Flask(__name__)
+app: Flask = Flask(__name__)
 
 if __name__ != '__main__':
     # pylint: disable=no-member
@@ -50,7 +51,7 @@ def arg_issues(args: Mapping[str, str]) -> Optional[Tuple[str, int]]:
 
 
 @app.route('/api', endpoint="api_documentation")
-def api_documentation():
+def api_documentation() -> Response:
     """Get the API documentation in json format.
 
     Returns:
@@ -59,7 +60,13 @@ def api_documentation():
     """
     ignored_rules = ['static']
 
-    def serialize(data):
+    class SerializedRoute(TypedDict):
+        """Method listing for a route."""
+
+        route: str
+        methods: List[str]
+
+    def serialize(data: Rule) -> SerializedRoute:
         return {
             "route": str(data),
             "methods": list(data.methods),
@@ -137,7 +144,10 @@ def get_cli_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(args=None, config_checker=None) -> None:
+def main(
+        args: Optional[argparse.Namespace] = None,
+        config_checker: Optional[Callable[[Flask], bool]] = None
+) -> None:
     """Run the main entry point for the CLI.
 
     Args:

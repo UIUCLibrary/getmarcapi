@@ -5,6 +5,8 @@ from typing import Optional, List
 import configparser
 import flask
 
+__all__ = ["get_config"]
+
 
 def get_config(app: flask.Flask) -> None:
     """Load the app with the correct configurations.
@@ -65,7 +67,7 @@ class EnvConfig(AbcConfigStrategy):
     """Load app configurations from environment Variables."""
 
     def __init__(self) -> None:
-        """Loads the possible setting from environment variables."""
+        """Load the possible setting from environment variables."""
         self.configuration = {
             "API_DOMAIN": os.environ.get('ALMA_API_DOMAIN'),
             "API_KEY": os.environ.get('API_KEY')
@@ -86,6 +88,7 @@ class EnvConfig(AbcConfigStrategy):
 
 class ConfigFile(AbcConfigStrategy):
     """Load app configurations from a file."""
+
     def __init__(self, config_file: str) -> None:
         """Parse a config file for settings.
 
