@@ -5,7 +5,7 @@ This module is for managing the way records are requested from the api
 
 import abc
 from typing import Mapping, Optional
-
+from  uiucprescon.getmarc2.records import RecordServer
 
 class AbsRecordStrategy(abc.ABC):
     """Base class for working with various types of records."""
@@ -20,7 +20,7 @@ class AbsRecordStrategy(abc.ABC):
         self.args = args
 
     @abc.abstractmethod
-    def get_record(self, server, identifier) -> str:
+    def get_record(self, server: RecordServer, identifier: str) -> str:
         """Retrieve a record for a given identifier."""
 
     @abc.abstractmethod
@@ -31,7 +31,7 @@ class AbsRecordStrategy(abc.ABC):
 class Bibid(AbsRecordStrategy):
     """UIUC bibid used in old Voyager catalog."""
 
-    def get_record(self, server, identifier) -> str:
+    def get_record(self, server: RecordServer, identifier: str) -> str:
         """Get the record for the bibid from the server.
 
         Args:
@@ -44,7 +44,7 @@ class Bibid(AbsRecordStrategy):
         """
         return server.get_record(identifier, "bibid")
 
-    def get_identifier(self, args: Mapping) -> str:
+    def get_identifier(self, args: Mapping[str, str]) -> str:
         """Retrieve the bibid from the args.
 
         Args:
@@ -60,7 +60,7 @@ class Bibid(AbsRecordStrategy):
 class Mmsid(AbsRecordStrategy):
     """MMSID used by ALMA."""
 
-    def get_record(self, server, identifier) -> str:
+    def get_record(self, server: RecordServer, identifier: str) -> str:
         """Get the record for the mmsid from the server.
 
         Args:
@@ -116,7 +116,7 @@ class RecordGetter:
 
         return None
 
-    def get_record(self, server, identifier: str) -> str:
+    def get_record(self, server: RecordServer, identifier: str) -> str:
         """Retrieve a record for a given identifier.
 
         Args:
@@ -127,8 +127,11 @@ class RecordGetter:
 
         """
         assert self._strategy is not None  # nosec
-        record = self._strategy.get_record(server, identifier)
-        if record is None:
+        try:
+            record = self._strategy.get_record(server, identifier)
+            if record is None:
+                raise ValueError()
+        except ValueError:
             raise ValueError(
                 "Unable retrieve record for {}".format(identifier)
             )
