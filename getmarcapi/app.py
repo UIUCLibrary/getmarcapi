@@ -2,7 +2,11 @@
 import logging
 import sys
 import argparse
-from typing import Tuple, Optional, Mapping, Callable, TypedDict, List
+from typing import Tuple, Optional, Mapping, Callable, List
+try:
+    from typing import TypedDict
+except ImportError:
+    from typing_extensions import TypedDict
 
 from flask import Flask, Response, request, render_template, jsonify
 from werkzeug.routing import Rule
