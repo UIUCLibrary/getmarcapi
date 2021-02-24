@@ -5,7 +5,8 @@ This module is for managing the way records are requested from the api
 
 import abc
 from typing import Mapping, Optional
-from  uiucprescon.getmarc2.records import RecordServer
+from uiucprescon.getmarc2.records import RecordServer
+
 
 class AbsRecordStrategy(abc.ABC):
     """Base class for working with various types of records."""
