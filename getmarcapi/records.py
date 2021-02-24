@@ -121,6 +121,7 @@ class RecordGetter:
         """Retrieve a record for a given identifier.
 
         Args:
+            server:
             identifier: Identifier used for a given record
 
         Returns:
@@ -132,10 +133,8 @@ class RecordGetter:
             record = self._strategy.get_record(server, identifier)
             if record is None:
                 raise ValueError()
-        except ValueError:
-            raise ValueError(
-                "Unable retrieve record for {}".format(identifier)
-            )
+        except (ValueError, ConnectionError) as e:
+            raise e.__class__(f"Unable retrieve record for {identifier}") from e
         return record
 
     def get_identifier(self, args: Mapping[str, str]) -> str:
