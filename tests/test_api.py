@@ -37,7 +37,7 @@ def test_get_record_xml(monkeypatch, client):
     monkeypatch.setattr(uiucprescon.getmarc2.records.RecordServer, "get_record", mock_get_record_response)
     rc = client.get('/api/record?bib_id=12345')
     assert rc.status_code == 200
-    assert rc.content_type == 'text/xml'
+    assert rc.content_type == 'application/xml;charset=UTF-8'
 
 
 def test_get_record_missing_param(client):
