@@ -124,9 +124,12 @@ def get_record() -> Response:
                 field_adder.contains_v = True
 
             metadata_record = field_adder.enrich(metadata_record)
-
         return \
-            Response(metadata_record, headers=header, content_type="text/xml")
+            Response(
+                metadata_record,
+                headers=header,
+                content_type="application/xml;charset=UTF-8"
+            )
 
     except AttributeError as error:
         # pylint: disable=no-member
