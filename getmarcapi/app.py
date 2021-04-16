@@ -12,9 +12,9 @@ from flask import Flask, Response, request, render_template, jsonify
 from werkzeug.routing import Rule
 from uiucprescon import getmarc2
 from uiucprescon.getmarc2 import modifiers
-from .records import RecordGetter
+from getmarcapi.records import RecordGetter
 
-from . import config
+from getmarcapi import config
 
 app: Flask = Flask(__name__)
 
