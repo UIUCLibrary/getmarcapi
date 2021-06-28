@@ -387,6 +387,7 @@ pipeline {
                             }
                             options{
                                 lock("getmarcapi-sonarscanner")
+                                retry(3)
                             }
                             when{
                                 equals expected: true, actual: params.USE_SONARQUBE
