@@ -401,6 +401,7 @@ pipeline {
                                 unstash "PYLINT_REPORT"
                                 unstash "FLAKE8_REPORT"
                                 script{
+
                                     withSonarQubeEnv(installationName:"sonarcloud", credentialsId: 'sonarcloud-getmarcapi') {
                                         if (env.CHANGE_ID){
                                             sh(
@@ -414,6 +415,7 @@ pipeline {
                                                 )
                                         }
                                     }
+                                    milestone label: 'sonarcloud'
                                     timeout(time: 1, unit: 'HOURS') {
                                         def sonarqube_result = waitForQualityGate(abortPipeline: false)
                                         if (sonarqube_result.status != 'OK') {
