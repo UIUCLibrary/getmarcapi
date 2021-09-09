@@ -1,5 +1,4 @@
 import os
-import subprocess
 
 from setuptools import setup, Command
 import distutils.command.build
@@ -20,6 +19,7 @@ class WebPackCommand(Command):
         self.node_modules_path = './node_modules'
 
     def initialize_options(self):
+        # todo make this an option to build inplace
         self.output_path = ''
 
     def finalize_options(self):
@@ -32,16 +32,17 @@ class WebPackCommand(Command):
         )
 
     def run(self):
+        # todo find npm
+        npm = 'npm'
         if not os.path.exists(self.node_modules_path):
-            command = ['npm', 'install']
-            subprocess.check_call(command)
+            self.spawn([npm, 'install'])
 
         command = [
-            'npm', 'run', 'env', '--',
+            npm,
+            'run', 'env', '--',
             'webpack', f'--output-path={self.output_path}'
         ]
-        subprocess.check_call(command)
-
+        self.spawn(command)
 
 setup(
     packages=['getmarcapi'],
