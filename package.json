@@ -1,0 +1,32 @@
+{
+  "name": "getmarcapi",
+
+  "version": "1.0.2",
+  "description": "Provide MARC XML data",
+  "main": "src/index.js",
+  "scripts": {
+    "build": "webpack"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UIUCLibrary/getmarcapi.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/UIUCLibrary/getmarcapi/issues"
+  },
+  "homepage": "https://github.com/UIUCLibrary/getmarcapi",
+  "devDependencies": {
+    "css-loader": "^6.2.0",
+    "node-sass": "^6.0.1",
+    "webpack": "^5.52.0",
+    "webpack-cli": "^4.8.0"
+  },
+  "dependencies": {
+    "bootstrap": "^5.1.1",
+    "jquery": "^3.6.0",
+    "popper.js": "^1.16.1",
+    "style-loader": "^3.2.1"
+  }
+}

@@ -10,3 +10,6 @@ include tox.ini
 # Pytest tests
 recursive-include tests *.py
 recursive-include getmarcapi/templates *
+recursive-include src *
+
+include package.json package-lock.json webpack.config.js
