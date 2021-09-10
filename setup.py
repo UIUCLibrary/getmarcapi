@@ -1,4 +1,5 @@
 import os
+import shutil
 
 from setuptools import setup, Command
 import distutils.command.build
@@ -11,37 +12,55 @@ class NewBuildCommand(distutils.command.build.build):
 
 
 class WebPackCommand(Command):
-    user_options = []
+    description = \
+        "compile and bundle javascript source files and dependency libraries"
+
+    user_options = [
+        ("inplace", "i", "install javascript files inplace"),
+        (
+            "npm-path=",
+            None,
+            "path to npm executable (defaults to one on the path"
+        )
+    ]
 
     def __init__(self, dist, **kw):
         super().__init__(dist, **kw)
         self.output_path = None
         self.node_modules_path = './node_modules'
+        self.inplace = None
+        self.npm_path = None
 
     def initialize_options(self):
-        # todo make this an option to build inplace
         self.output_path = ''
+        self.inplace = None
+        self.npm_path = None
 
     def finalize_options(self):
+        if self.npm_path is None:
+            self.npm_path = shutil.which('npm')
         build_py_command = self.get_finalized_command('build_py')
-
+        output_root = "" if self.inplace == 1 else build_py_command.build_lib
         self.output_path = os.path.join(
-            build_py_command.build_lib,
+            output_root,
             'getmarcapi',
             'static'
         )
 
     def run(self):
-        # todo find npm
-        npm = 'npm'
         if not os.path.exists(self.node_modules_path):
-            self.spawn([npm, 'install'])
+            self.announce("Installing npm")
+            self.spawn([
+                    self.npm_path,
+                    'install'
+            ])
 
         command = [
-            npm,
+            self.npm_path,
             'run', 'env', '--',
             'webpack', f'--output-path={self.output_path}'
         ]
+        self.announce("Running webpack")
         self.spawn(command)
 
 setup(
