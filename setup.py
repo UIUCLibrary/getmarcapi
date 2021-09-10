@@ -3,6 +3,7 @@ import shutil
 
 from setuptools import setup, Command
 import distutils.command.build
+from distutils.errors import DistutilsExecError
 
 
 class NewBuildCommand(distutils.command.build.build):
@@ -48,6 +49,10 @@ class WebPackCommand(Command):
         )
 
     def run(self):
+        if self.npm_path is None or os.path.exists(self.npm_path) is False:
+            raise DistutilsExecError(
+                "Required program missing from toolchain: npm"
+            )
         if not os.path.exists(self.node_modules_path):
             self.announce("Installing npm")
             self.spawn([
