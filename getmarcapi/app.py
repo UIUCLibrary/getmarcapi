@@ -71,7 +71,7 @@ def api_documentation() -> Response:
     def serialize(data: Rule) -> serialized_route:
         return {
             "route": str(data),
-            "methods": list(data.methods),
+            "methods": list(data.methods) if data.methods is not None else [],
         }
 
     results = list(
