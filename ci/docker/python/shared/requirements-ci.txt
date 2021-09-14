@@ -13,4 +13,4 @@ sphinx
 sphinxcontrib.spelling
 tox
 typing-extensions;python_version<"3.8"
-uiucprescon.getmarc2>=0.1.0b4
+uiucprescon.getmarc2>=0.1.1
