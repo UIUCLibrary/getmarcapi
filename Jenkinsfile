@@ -488,7 +488,7 @@ pipeline {
                         }
                     }
                     steps {
-                        sh(label: "Building python distribution packages", script: 'python -m pep517.build .')
+                        sh(label: "Building python distribution packages", script: 'python -m build .')
                     }
                     post {
                         always{
