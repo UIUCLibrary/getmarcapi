@@ -15,7 +15,15 @@ RUN python -m pip install --upgrade pip &&  \
 
 
 FROM python:${PYTHON_VERSION}
-#RUN apt update && apt install -y libenchant1c2a
+RUN apt update && apt install -y npm
+RUN npm cache clean -f && \
+    npm install -g n
+
+RUN n stable -y && \
+    npm install -g npm && \
+    mkdir /.npm && \
+    chmod 777 /.npm
+
 ARG USER_ID=1000
 ARG GROUP_ID=1000
 
