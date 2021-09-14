@@ -4,7 +4,15 @@ RUN apt update && \
     apt-get install -y software-properties-common && \
     add-apt-repository ppa:deadsnakes/ppa && \
     apt update
+
 RUN cat /tmp/apt-packages.txt | xargs apt install -y python3-pip
+RUN npm cache clean -f && \
+    npm install -g n
+
+RUN n stable -y && \
+    npm install -g npm && \
+    mkdir /.npm && \
+    chmod 777 /.npm
 
 ARG USER_ID=1000
 ARG GROUP_ID=1000
