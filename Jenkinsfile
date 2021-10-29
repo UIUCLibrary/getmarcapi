@@ -216,6 +216,12 @@ pipeline {
                                                 }
                                             }
                                         }
+                                        stage('Task Scanner'){
+                                            steps{
+                                                recordIssues(tools: [taskScanner(highTags: 'FIXME', includePattern: 'getmarcapi"F/**/*.py', normalTags: 'TODO')])
+                                            }
+                                        }
+
             //                         stage("Doctest"){
             //                             steps {
             //                                 sh "coverage run --parallel-mode --source getmarcapi -m sphinx -b doctest -d build/docs/doctrees docs reports/doctest -w logs/doctest.log"
