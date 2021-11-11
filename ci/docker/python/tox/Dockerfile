@@ -64,6 +64,31 @@ RUN PYTHON=python3.8 && \
     $PYTHON -m pip wheel -w /wheels --no-cache-dir -r /tmp/requirements-ci.txt
 
 # ==============================================================================
+FROM wheel_builder_base as wheel_builder_py39
+
+ARG PIP_EXTRA_INDEX_URL
+ARG PIP_INDEX_URL
+
+COPY ci/docker/python/shared/requirements-ci.txt /tmp/
+RUN PYTHON=python3.9 && \
+    $PYTHON -m pip install pip --upgrade pip && \
+    $PYTHON -m pip install wheel && \
+    $PYTHON -m pip wheel -w /wheels --no-cache-dir -r /tmp/requirements-ci.txt
+
+# ==============================================================================
+FROM wheel_builder_base as wheel_builder_py310
+
+ARG PIP_EXTRA_INDEX_URL
+ARG PIP_INDEX_URL
+
+COPY ci/docker/python/shared/requirements-ci.txt /tmp/
+RUN PYTHON=python3.10 && \
+    $PYTHON -m ensurepip --upgrade && \
+    $PYTHON -m pip install pip --upgrade pip && \
+    $PYTHON -m pip install wheel && \
+    $PYTHON -m pip wheel -w /wheels --no-cache-dir -r /tmp/requirements-ci.txt
+
+# ==============================================================================
 FROM wheel_builder_base
 
 ARG PIP_EXTRA_INDEX_URL
@@ -72,6 +97,8 @@ ARG PIP_INDEX_URL
 COPY --from=wheel_builder_py36 /wheels/* /wheels/
 COPY --from=wheel_builder_py37 /wheels/* /wheels/
 COPY --from=wheel_builder_py38 /wheels/* /wheels/
+COPY --from=wheel_builder_py39 /wheels/* /wheels/
+COPY --from=wheel_builder_py310 /wheels/* /wheels/
 ENV PIP_FIND_LINKS=/wheels
 RUN python3 -m pip install pip --upgrade && \
     pip3 install tox
