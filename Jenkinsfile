@@ -58,11 +58,11 @@ def tox = loadHelper("ci/jenkins/scripts/tox.groovy")
 
 def startup(){
     stage("Getting Distribution Info"){
-        node('linux && docker') {
+        node('linux && docker && x86') {
             ws{
                 checkout scm
                 try{
-                    docker.image('python:3.8').inside {
+                    docker.image('python').inside {
                         timeout(2){
 
                             sh(
@@ -754,7 +754,7 @@ pipeline {
                     }
                     post{
                         success{
-                            node('linux && docker') {
+                            node('linux && docker && devpi-access') {
                                script{
                                     if (!env.TAG_NAME?.trim()){
                                         docker.build("getmarc:devpi",'-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release .').inside{
@@ -772,7 +772,7 @@ pipeline {
                             }
                         }
                         cleanup{
-                            node('linux && docker') {
+                            node('linux && docker && devpi-access') {
                                script{
                                     docker.build("getmarc:devpi",'-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release .').inside{
                                         sh(
@@ -807,7 +807,7 @@ pipeline {
                             stages{
                                 stage("Deploy to Private Docker Registry"){
                                     agent{
-                                        label "linux && docker"
+                                        label "linux && docker && x86"
                                     }
                                     steps{
                                         script{
