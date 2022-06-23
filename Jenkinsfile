@@ -487,16 +487,24 @@ pipeline {
             stages{
                 stage("Creating Package") {
                     agent {
-                        dockerfile {
-                            filename DEFAULT_DOCKER_AGENT_FILENAME
-                            label DEFAULT_DOCKER_AGENT_LABELS
-                            additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+                        docker{
+                            image 'python'
+                            label 'linux && docker'
                         }
                     }
-                    steps {
-                        sh(label: "Building python distribution packages", script: 'python -m build .')
+                    steps{
+                        timeout(5){
+                            withEnv(['PIP_NO_CACHE_DIR=off']) {
+                                sh(label: 'Building Python Package',
+                                   script: '''python -m venv venv --upgrade-deps
+                                              venv/bin/pip install build
+                                              venv/bin/python -m build .
+                                              '''
+                                   )
+                           }
+                        }
                     }
-                    post {
+                    post{
                         always{
                             stash includes: 'dist/*.*', name: "PYTHON_PACKAGES"
                         }
@@ -507,11 +515,11 @@ pipeline {
                             cleanWs(
                                 deleteDirs: true,
                                 patterns: [
-                                    [pattern: 'dist/', type: 'INCLUDE'],
-                                    [pattern: 'build/', type: 'INCLUDE'],
-                                    [pattern: 'getmarcapi.egg-info/', type: 'INCLUDE'],
-                                ]
-                            )
+                                    [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                    [pattern: 'venv/', type: 'INCLUDE'],
+                                    [pattern: 'dist/', type: 'INCLUDE']
+                                    ]
+                                )
                         }
                     }
                 }
