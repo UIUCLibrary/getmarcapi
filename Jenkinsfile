@@ -99,7 +99,7 @@ startup()
 props = get_props("getmarcapi.dist-info/METADATA")
 DEFAULT_DOCKER_AGENT_FILENAME = 'ci/docker/python/linux/Dockerfile'
 DEFAULT_DOCKER_AGENT_LABELS = 'linux && docker && x86'
-DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release --build-arg PIP_EXTRA_INDEX_URL'
+DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_INDEX_URL --build-arg PIP_EXTRA_INDEX_URL'
 
 pipeline {
     agent none
