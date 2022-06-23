@@ -644,7 +644,7 @@ pipeline {
                             agent{
                                 dockerfile {
                                     filename DEFAULT_DOCKER_AGENT_FILENAME
-                                    label DEFAULT_DOCKER_AGENT_LABELS
+                                    label 'linux && docker && x86 && devpi-access'
                                     additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                                 }
                             }
@@ -674,7 +674,7 @@ pipeline {
                                         agent {
                                             dockerfile {
                                                 filename DEFAULT_DOCKER_AGENT_FILENAME
-                                                label DEFAULT_DOCKER_AGENT_LABELS
+                                                label 'linux && docker && x86 && devpi-access'
                                                 additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL"
                                             }
                                         }
@@ -699,7 +699,7 @@ pipeline {
                                         agent {
                                             dockerfile {
                                                 filename DEFAULT_DOCKER_AGENT_FILENAME
-                                                label DEFAULT_DOCKER_AGENT_LABELS
+                                                label 'linux && docker && x86 && devpi-access'
                                                 additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL"
                                             }
                                         }
@@ -743,7 +743,7 @@ pipeline {
                             agent {
                                 dockerfile {
                                     filename DEFAULT_DOCKER_AGENT_FILENAME
-                                    label DEFAULT_DOCKER_AGENT_LABELS
+                                    label 'linux && docker && x86 && devpi-access'
                                     additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                                 }
                             }
@@ -815,7 +815,7 @@ pipeline {
                             stages{
                                 stage("Deploy to Private Docker Registry"){
                                     agent{
-                                        label "linux && docker && x86"
+                                        label "linux && docker && x86 && devpi-access"
                                     }
                                     steps{
                                         script{
@@ -842,7 +842,7 @@ pipeline {
                                 }
                                 stage("Deploy to Production server"){
                                     agent{
-                                        label "linux && docker"
+                                        label "linux && docker && devpi-access"
                                     }
                                     input {
                                         message 'Deploy to live server?'
