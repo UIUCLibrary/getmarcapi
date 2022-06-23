@@ -136,7 +136,7 @@ pipeline {
 //                 dockerfile {
 //                         filename 'ci/docker/python/linux/Dockerfile'
 //                         label 'linux && docker'
-//                         additionalBuildArgs "--build-arg USER_ID=\$(id -u) --build-arg GROUP_ID=\$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
+//                         additionalBuildArgs "--build-arg USER_ID=\$(id -u) --build-arg GROUP_ID=\$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL"
 //                     }
 //                 }
 //                 steps {
@@ -496,7 +496,7 @@ pipeline {
                     steps {
                         sh(label: "Building python distribution packages", script: 'python -m build .')
                     }
-                    post {
+                    post{
                         always{
                             stash includes: 'dist/*.*', name: "PYTHON_PACKAGES"
                         }
@@ -507,11 +507,11 @@ pipeline {
                             cleanWs(
                                 deleteDirs: true,
                                 patterns: [
-                                    [pattern: 'dist/', type: 'INCLUDE'],
-                                    [pattern: 'build/', type: 'INCLUDE'],
-                                    [pattern: 'getmarcapi.egg-info/', type: 'INCLUDE'],
-                                ]
-                            )
+                                    [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                    [pattern: 'venv/', type: 'INCLUDE'],
+                                    [pattern: 'dist/', type: 'INCLUDE']
+                                    ]
+                                )
                         }
                     }
                 }
@@ -530,7 +530,7 @@ pipeline {
                             dockerfile {
                                 filename DEFAULT_DOCKER_AGENT_FILENAME
                                 label DEFAULT_DOCKER_AGENT_LABELS
-                                additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
+                                additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL"
                             }
                         }
                         stages{
@@ -636,7 +636,7 @@ pipeline {
                             agent{
                                 dockerfile {
                                     filename DEFAULT_DOCKER_AGENT_FILENAME
-                                    label DEFAULT_DOCKER_AGENT_LABELS
+                                    label 'linux && docker && x86 && devpi-access'
                                     additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                                 }
                             }
@@ -666,8 +666,8 @@ pipeline {
                                         agent {
                                             dockerfile {
                                                 filename DEFAULT_DOCKER_AGENT_FILENAME
-                                                label DEFAULT_DOCKER_AGENT_LABELS
-                                                additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
+                                                label 'linux && docker && x86 && devpi-access'
+                                                additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL"
                                             }
                                         }
                                         options {
@@ -691,8 +691,8 @@ pipeline {
                                         agent {
                                             dockerfile {
                                                 filename DEFAULT_DOCKER_AGENT_FILENAME
-                                                label DEFAULT_DOCKER_AGENT_LABELS
-                                                additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release"
+                                                label 'linux && docker && x86 && devpi-access'
+                                                additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL"
                                             }
                                         }
                                         options {
@@ -735,7 +735,7 @@ pipeline {
                             agent {
                                 dockerfile {
                                     filename DEFAULT_DOCKER_AGENT_FILENAME
-                                    label DEFAULT_DOCKER_AGENT_LABELS
+                                    label 'linux && docker && x86 && devpi-access'
                                     additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                                 }
                             }
@@ -757,7 +757,7 @@ pipeline {
                             node('linux && docker && devpi-access') {
                                script{
                                     if (!env.TAG_NAME?.trim()){
-                                        docker.build("getmarc:devpi",'-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release .').inside{
+                                        docker.build("getmarc:devpi",'-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL .').inside{
                                             sh(
                                                 label: "Moving DevPi package from staging index to index",
                                                 script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
@@ -774,7 +774,7 @@ pipeline {
                         cleanup{
                             node('linux && docker && devpi-access') {
                                script{
-                                    docker.build("getmarc:devpi",'-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL=https://devpi.library.illinois.edu/production/release .').inside{
+                                    docker.build("getmarc:devpi",'-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL .').inside{
                                         sh(
                                             label: "Removing Package from DevPi staging index",
                                             script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
@@ -807,7 +807,7 @@ pipeline {
                             stages{
                                 stage("Deploy to Private Docker Registry"){
                                     agent{
-                                        label "linux && docker && x86"
+                                        label "linux && docker && x86 && devpi-access"
                                     }
                                     steps{
                                         script{
@@ -834,7 +834,7 @@ pipeline {
                                 }
                                 stage("Deploy to Production server"){
                                     agent{
-                                        label "linux && docker"
+                                        label "linux && docker && devpi-access"
                                     }
                                     input {
                                         message 'Deploy to live server?'
