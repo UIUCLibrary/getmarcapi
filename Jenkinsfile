@@ -487,22 +487,14 @@ pipeline {
             stages{
                 stage("Creating Package") {
                     agent {
-                        docker{
-                            image 'python'
-                            label 'linux && docker'
+                        dockerfile {
+                            filename DEFAULT_DOCKER_AGENT_FILENAME
+                            label DEFAULT_DOCKER_AGENT_LABELS
+                            additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                         }
                     }
-                    steps{
-                        timeout(5){
-                            withEnv(['PIP_NO_CACHE_DIR=off']) {
-                                sh(label: 'Building Python Package',
-                                   script: '''python -m venv venv --upgrade-deps
-                                              venv/bin/pip install build
-                                              venv/bin/python -m build .
-                                              '''
-                                   )
-                           }
-                        }
+                    steps {
+                        sh(label: "Building python distribution packages", script: 'python -m build .')
                     }
                     post{
                         always{
