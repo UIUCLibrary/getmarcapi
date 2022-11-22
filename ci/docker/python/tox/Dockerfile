@@ -6,12 +6,12 @@ RUN apt update && \
     apt update && \
     cat /tmp/apt-packages.txt | xargs apt install -y
 
-RUN npm cache clean -f && \
-    npm install -g n
+#RUN npm cache clean -f && \
+#    npm install -g n
 
-RUN n stable -y && \
-    npm install -g npm && \
-    mkdir /.npm && \
+#RUN n stable -y && \
+#    npm install -g npm && \
+RUN mkdir /.npm && \
     chmod 777 /.npm
 
 ARG USER_ID=1000
