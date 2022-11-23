@@ -103,8 +103,8 @@ COPY --from=wheel_builder_py310 /wheels/* /wheels/
 COPY --from=wheel_builder_py311 /wheels/* /wheels/
 ENV PIP_FIND_LINKS=/wheels
 RUN python3 -m pip install pip --upgrade && \
-    pip3 install tox
+    pip3 install tox "devpi-client<6.0"
 
 USER user
 WORKDIR /src
-CMD tox --workdir /tmp/tox/ -vv --parallel--safe-build --recreate
+#CMD tox --workdir /tmp/tox/ -vv --parallel--safe-build --recreate

@@ -1,11 +1,12 @@
 bandit
 build
 coverage
-devpi-client
+devpi-client<6.0
 flask
 flake8
 lxml-stubs
 mypy
+paramiko
 pydocstyle
 pylint
 pytest
