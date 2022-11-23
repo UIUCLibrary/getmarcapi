@@ -6,12 +6,12 @@ RUN apt update && \
     apt update && \
     cat /tmp/apt-packages.txt | xargs apt install -y
 
-RUN npm cache clean -f && \
-    npm install -g n
+#RUN npm cache clean -f && \
+#    npm install -g n
 
-RUN n stable -y && \
-    npm install -g npm && \
-    mkdir /.npm && \
+#RUN n stable -y && \
+#    npm install -g npm && \
+RUN mkdir /.npm && \
     chmod 777 /.npm
 
 ARG USER_ID=1000
@@ -28,17 +28,6 @@ RUN if id $USER_ID ; then \
         useradd  -u $USER_ID -s /bin/sh -m -d /home/user -g user user ;\
     fi
 
-# ******************************************************************************
-FROM wheel_builder_base as wheel_builder_py36
-
-ARG PIP_EXTRA_INDEX_URL
-ARG PIP_INDEX_URL
-
-COPY ci/docker/python/shared/requirements-ci.txt /tmp/
-RUN PYTHON=python3.6 && \
-    $PYTHON -m pip install pip --upgrade pip && \
-    $PYTHON -m pip install wheel && \
-    $PYTHON -m pip wheel -w /wheels --no-cache-dir -r /tmp/requirements-ci.txt
 
 # ==============================================================================
 FROM wheel_builder_base as wheel_builder_py37
@@ -88,17 +77,30 @@ RUN PYTHON=python3.10 && \
     $PYTHON -m pip install wheel && \
     $PYTHON -m pip wheel -w /wheels --no-cache-dir -r /tmp/requirements-ci.txt
 
+# ============================================================================== \
+FROM wheel_builder_base as wheel_builder_py311
+
+ARG PIP_EXTRA_INDEX_URL
+ARG PIP_INDEX_URL
+
+COPY ci/docker/python/shared/requirements-ci.txt /tmp/
+RUN PYTHON=python3.11 && \
+    $PYTHON -m ensurepip --upgrade && \
+    $PYTHON -m pip install pip --upgrade pip && \
+    $PYTHON -m pip install wheel && \
+    $PYTHON -m pip wheel -w /wheels --no-cache-dir -r /tmp/requirements-ci.txt
+
 # ==============================================================================
 FROM wheel_builder_base
 
 ARG PIP_EXTRA_INDEX_URL
 ARG PIP_INDEX_URL
 
-COPY --from=wheel_builder_py36 /wheels/* /wheels/
 COPY --from=wheel_builder_py37 /wheels/* /wheels/
 COPY --from=wheel_builder_py38 /wheels/* /wheels/
 COPY --from=wheel_builder_py39 /wheels/* /wheels/
 COPY --from=wheel_builder_py310 /wheels/* /wheels/
+COPY --from=wheel_builder_py311 /wheels/* /wheels/
 ENV PIP_FIND_LINKS=/wheels
 RUN python3 -m pip install pip --upgrade && \
     pip3 install tox
