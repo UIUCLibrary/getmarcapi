@@ -95,7 +95,8 @@ FROM wheel_builder_base
 
 ARG PIP_EXTRA_INDEX_URL
 ARG PIP_INDEX_URL
-
+RUN mkdir -p /.cache/pip && \
+    chmod -R 777 /.cache
 COPY --from=wheel_builder_py37 /wheels/* /wheels/
 COPY --from=wheel_builder_py38 /wheels/* /wheels/
 COPY --from=wheel_builder_py39 /wheels/* /wheels/
@@ -103,8 +104,7 @@ COPY --from=wheel_builder_py310 /wheels/* /wheels/
 COPY --from=wheel_builder_py311 /wheels/* /wheels/
 ENV PIP_FIND_LINKS=/wheels
 RUN python3 -m pip install pip --upgrade && \
-    pip3 install tox
-
+    pip3 install tox "devpi-client<6.0"
 USER user
 WORKDIR /src
 CMD tox --workdir /tmp/tox/ -vv --parallel--safe-build --recreate
