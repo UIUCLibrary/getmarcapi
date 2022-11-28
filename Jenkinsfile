@@ -137,49 +137,6 @@ pipeline {
                 }
             }
         }
-        stage("Sphinx Documentation"){
-            agent{
-                dockerfile {
-                        filename 'ci/docker/python/linux/Dockerfile'
-                        label 'linux && docker'
-                        additionalBuildArgs '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
-                    }
-                }
-            steps {
-                sh(
-                    label: "Building docs",
-                    script: '''mkdir -p logs
-                               python -m sphinx docs build/docs/html -d build/docs/.doctrees -w logs/build_sphinx.log
-                               '''
-                    )
-            }
-            post{
-                always {
-                    recordIssues(tools: [sphinxBuild(pattern: 'logs/build_sphinx.log')])
-                }
-                success{
-                    publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'build/docs/html', reportFiles: 'index.html', reportName: 'Documentation', reportTitles: ''])
-                    unstash "DIST-INFO"
-                    script{
-                        def props = readProperties interpolate: false, file: "getmarcapi.dist-info/METADATA"
-                        def DOC_ZIP_FILENAME = "${props.Name}-${props.Version}.doc.zip"
-                        zip archive: true, dir: "${WORKSPACE}/build/docs/html", glob: '', zipFile: "dist/${DOC_ZIP_FILENAME}"
-                        stash includes: "dist/${DOC_ZIP_FILENAME},build/docs/html/**", name: 'DOCS_ARCHIVE'
-                    }
-
-                }
-                cleanup{
-                    cleanWs(
-                        patterns: [
-                            [pattern: 'logs/', type: 'INCLUDE'],
-                            [pattern: "build/docs/", type: 'INCLUDE'],
-                            [pattern: "dist/", type: 'INCLUDE']
-                        ],
-                        deleteDirs: true
-                    )
-                }
-            }
-        }
         stage("Checks") {
             when{
                 equals expected: true, actual: params.RUN_CHECKS
@@ -824,7 +781,6 @@ pipeline {
                         }
                         steps {
                             timeout(5){
-                                unstash 'DOCS_ARCHIVE'
                                 unstash 'PYTHON_PACKAGES'
                                 script{
                                     devpi.upload(
@@ -1052,60 +1008,6 @@ pipeline {
                                             }
                                         }
                                     }
-                                }
-                            }
-                        }
-                        stage("Deploy Documentation"){
-                            when{
-                                equals expected: true, actual: params.DEPLOY_DOCS
-                                beforeInput true
-                            }
-                            input {
-                                message 'Deploy documentation'
-                                id 'DEPLOY_DOCUMENTATION'
-                                parameters {
-                                    string defaultValue: 'getmarc2', description: '', name: 'DEPLOY_DOCS_URL_SUBFOLDER', trim: true
-                                }
-                            }
-                            agent any
-                            steps{
-                                unstash "DOCS_ARCHIVE"
-                                sshPublisher(
-                                    publishers: [
-                                        sshPublisherDesc(
-                                            configName: 'apache-ns - lib-dccuser-updater',
-                                            transfers: [
-                                                sshTransfer(
-                                                    cleanRemote: false,
-                                                    excludes: '',
-                                                    execCommand: '',
-                                                    execTimeout: 120000,
-                                                    flatten: false,
-                                                    makeEmptyDirs: false,
-                                                    noDefaultExcludes: false,
-                                                    patternSeparator: '[, ]+',
-                                                    remoteDirectory: "${DEPLOY_DOCS_URL_SUBFOLDER}",
-                                                    remoteDirectorySDF: false,
-                                                    removePrefix: 'build/docs/html',
-                                                    sourceFiles: 'build/docs/html/**'
-                                                )
-                                            ],
-                                            usePromotionTimestamp: false,
-                                            useWorkspaceInPromotion: false,
-                                            verbose: false
-                                        )
-                                    ]
-                                )
-                            }
-                            post{
-                                cleanup{
-                                    cleanWs(
-                                        deleteDirs: true,
-                                        patterns: [
-                                            [pattern: "build/", type: 'INCLUDE'],
-                                            [pattern: "dist/", type: 'INCLUDE'],
-                                        ]
-                                    )
                                 }
                             }
                         }
