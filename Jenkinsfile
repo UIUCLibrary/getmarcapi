@@ -72,10 +72,10 @@ def startup(){
                         timeout(2){
 
                             sh(
-                            label: "Running setup.py with dist_info",
-                            script: """python --version
-                                       python setup.py dist_info
-                                    """
+                                label: "Running setup.py with dist_info",
+                                script: """python --version
+                                           python setup.py dist_info
+                                        """
                             )
                             stash includes: "*.dist-info/**", name: 'DIST-INFO'
                             archiveArtifacts artifacts: "*.dist-info/**"
