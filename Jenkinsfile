@@ -1,4 +1,9 @@
 SUPPORTED_LINUX_VERSIONS = ['3.7', '3.8', '3.9', '3.10']
+DEVPI_CONFIG = [
+    index: getDevPiStagingIndex(),
+    server: 'https://devpi.library.illinois.edu',
+    credentialsId: 'DS_devpi',
+]
 
 def getDevPiStagingIndex(){
 
