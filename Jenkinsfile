@@ -137,49 +137,49 @@ pipeline {
                 }
             }
         }
-//         stage("Sphinx Documentation"){
-//             agent{
-//                 dockerfile {
-//                         filename 'ci/docker/python/linux/Dockerfile'
-//                         label 'linux && docker'
-//                         additionalBuildArgs "--build-arg USER_ID=\$(id -u) --build-arg GROUP_ID=\$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL"
-//                     }
-//                 }
-//                 steps {
-//                     sh(
-//                         label: "Building docs",
-//                         script: '''mkdir -p logs
-//                                    python -m sphinx docs build/docs/html -d build/docs/.doctrees -w logs/build_sphinx.log
-//                                    '''
-//                         )
-//                 }
-//                 post{
-//                     always {
-//                         recordIssues(tools: [sphinxBuild(pattern: 'logs/build_sphinx.log')])
-//                     }
-//                     success{
-//                         publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'build/docs/html', reportFiles: 'index.html', reportName: 'Documentation', reportTitles: ''])
-//                         unstash "DIST-INFO"
-//                         script{
-//                             def props = readProperties interpolate: false, file: "getmarcapi.dist-info/METADATA"
-//                             def DOC_ZIP_FILENAME = "${props.Name}-${props.Version}.doc.zip"
-//                             zip archive: true, dir: "${WORKSPACE}/build/docs/html", glob: '', zipFile: "dist/${DOC_ZIP_FILENAME}"
-//                             stash includes: "dist/${DOC_ZIP_FILENAME},build/docs/html/**", name: 'DOCS_ARCHIVE'
-//                         }
-// 
-//                     }
-//                     cleanup{
-//                         cleanWs(
-//                             patterns: [
-//                                 [pattern: 'logs/', type: 'INCLUDE'],
-//                                 [pattern: "build/docs/", type: 'INCLUDE'],
-//                                 [pattern: "dist/", type: 'INCLUDE']
-//                             ],
-//                             deleteDirs: true
-//                         )
-//                     }
-//                 }
-//             }
+        stage("Sphinx Documentation"){
+            agent{
+                dockerfile {
+                        filename 'ci/docker/python/linux/Dockerfile'
+                        label 'linux && docker'
+                        additionalBuildArgs '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
+                    }
+                }
+            steps {
+                sh(
+                    label: "Building docs",
+                    script: '''mkdir -p logs
+                               python -m sphinx docs build/docs/html -d build/docs/.doctrees -w logs/build_sphinx.log
+                               '''
+                    )
+            }
+            post{
+                always {
+                    recordIssues(tools: [sphinxBuild(pattern: 'logs/build_sphinx.log')])
+                }
+                success{
+                    publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'build/docs/html', reportFiles: 'index.html', reportName: 'Documentation', reportTitles: ''])
+                    unstash "DIST-INFO"
+                    script{
+                        def props = readProperties interpolate: false, file: "getmarcapi.dist-info/METADATA"
+                        def DOC_ZIP_FILENAME = "${props.Name}-${props.Version}.doc.zip"
+                        zip archive: true, dir: "${WORKSPACE}/build/docs/html", glob: '', zipFile: "dist/${DOC_ZIP_FILENAME}"
+                        stash includes: "dist/${DOC_ZIP_FILENAME},build/docs/html/**", name: 'DOCS_ARCHIVE'
+                    }
+
+                }
+                cleanup{
+                    cleanWs(
+                        patterns: [
+                            [pattern: 'logs/', type: 'INCLUDE'],
+                            [pattern: "build/docs/", type: 'INCLUDE'],
+                            [pattern: "dist/", type: 'INCLUDE']
+                        ],
+                        deleteDirs: true
+                    )
+                }
+            }
+        }
         stage("Checks") {
             when{
                 equals expected: true, actual: params.RUN_CHECKS
