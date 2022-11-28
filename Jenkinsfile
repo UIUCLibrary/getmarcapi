@@ -839,7 +839,7 @@ pipeline {
                                         devpi.testDevpiPackage(
                                             agent: [
                                                 dockerfile: [
-                                                    filename: 'ci/docker/python/linux/tox/Dockerfile',
+                                                    filename: 'ci/docker/python/tox/Dockerfile',
                                                     additionalBuildArgs: "--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL",
                                                     label: 'linux && docker && x86 && devpi-access'
                                                 ]
