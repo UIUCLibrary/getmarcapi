@@ -88,21 +88,21 @@ def startup(){
         }
     }
 }
-def get_props(metadataFile){
-    stage("Reading Package Metadata"){
-        node() {
-            try{
-                unstash "DIST-INFO"
-                def props = readProperties interpolate: true, file: metadataFile
-                return props
-            } finally {
-                deleteDir()
-            }
+def get_props(){
+    stage('Reading Package Metadata'){
+        node(){
+            unstash 'DIST-INFO'
+            def metadataFile = findFiles( glob: '*.dist-info/METADATA')[0]
+            def metadata = readProperties(interpolate: true, file: metadataFile.path )
+            echo """Version = ${metadata.Version}
+Name = ${metadata.Name}
+"""
+            return metadata
         }
     }
 }
 startup()
-props = get_props("getmarcapi.dist-info/METADATA")
+props = get_props()
 DEFAULT_DOCKER_AGENT_FILENAME = 'ci/docker/python/linux/Dockerfile'
 DEFAULT_DOCKER_AGENT_LABELS = 'linux && docker && x86'
 DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_INDEX_URL --build-arg PIP_EXTRA_INDEX_URL'
