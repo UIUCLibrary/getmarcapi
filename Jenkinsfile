@@ -65,7 +65,6 @@ def loadHelper(file){
         return helper
     }
 }
-def tox = loadHelper("ci/jenkins/scripts/tox.groovy")
 
 def startup(){
     stage("Getting Distribution Info"){
@@ -431,6 +430,13 @@ pipeline {
                     }
                     steps{
                         script{
+                            def tox = fileLoader.fromGit(
+                                'tox',
+                                'https://github.com/UIUCLibrary/jenkins_helper_scripts.git',
+                                '4',
+                                null,
+                                ''
+                            )
                             def jobs = tox.getToxTestsParallel(
                                                 envNamePrefix: "Linux",
                                                 label: DEFAULT_DOCKER_AGENT_LABELS,
