@@ -2,6 +2,7 @@ from unittest.mock import Mock
 
 from getmarcapi import records
 import pytest
+from uiucprescon.getmarc2.records import NoRecordsFound
 
 
 def test_invalid_record_strategy():
@@ -49,9 +50,9 @@ def test_mmsid_error_strategy(mmsid_request_args, monkeypatch):
     getter = records.RecordGetter(args=mmsid_request_args)
 
     def mock_get_record(*args, **kwargs):
-        raise ValueError("Bad Request")
+        raise NoRecordsFound(Mock())
     server = Mock()
     with pytest.raises(ValueError) as excep:
         monkeypatch.setattr(getter._strategy, "get_record", mock_get_record)
         getter.get_record(server, mmsid_request_args['mms_id'])
-    assert mmsid_request_args['mms_id'] in str(excep.value)
+    assert 'No record found' in str(excep.value)

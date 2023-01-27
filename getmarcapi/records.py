@@ -5,7 +5,7 @@ This module is for managing the way records are requested from the api
 
 import abc
 from typing import Mapping, Optional
-from uiucprescon.getmarc2.records import RecordServer
+from uiucprescon.getmarc2.records import RecordServer, NoRecordsFound
 
 
 class AbsRecordStrategy(abc.ABC):
@@ -133,7 +133,14 @@ class RecordGetter:
             record = self._strategy.get_record(server, identifier)
             if record is None:
                 raise ValueError()
-        except (ValueError, ConnectionError) as error:
+        except NoRecordsFound as error:
+            error.record_identifier = identifier
+            if isinstance(self._strategy, Mmsid):
+                error.identifier_type = "mmsid"
+            elif isinstance(self._strategy, Bibid):
+                error.identifier_type = "bibid"
+            raise
+        except ConnectionError as error:
             raise error.__class__(
                 f"Unable retrieve record for {identifier}"
             ) from error

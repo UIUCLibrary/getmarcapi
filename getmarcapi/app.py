@@ -13,6 +13,7 @@ from werkzeug.routing import Rule
 from uiucprescon import getmarc2
 from uiucprescon.getmarc2 import modifiers
 from getmarcapi.records import RecordGetter
+from xml.etree import ElementTree as ET
 
 from getmarcapi import config
 
@@ -135,6 +136,21 @@ def get_record() -> Response:
         # pylint: disable=no-member
         app.logger.info("Failed to retrieve record")
         return Response(f"Failed. {error}", 400, content_type="text")
+
+
+@app.errorhandler(getmarc2.records.NoRecordsFound)
+def handle_no_records_found(e):
+    """Return JSON instead of HTML for HTTP errors."""
+    response = Response(status=404)
+    root = ET.Element("data")
+    record_identifier = ET.SubElement(root, 'record_identifier')
+    record_identifier.text = e.record_identifier
+
+    identifier_type = ET.SubElement(root, 'identifier_type')
+    identifier_type.text = e.identifier_type
+    response.data = ET.tostring(root)
+    response.content_type = "application/xml"
+    return response
 
 
 def get_cli_parser() -> argparse.ArgumentParser:
