@@ -7,13 +7,13 @@ try:
     from typing import TypedDict
 except ImportError:
     from typing_extensions import TypedDict
+from xml.etree import ElementTree as ET
 
 from flask import Flask, Response, request, render_template, jsonify
 from werkzeug.routing import Rule
 from uiucprescon import getmarc2
 from uiucprescon.getmarc2 import modifiers
 from getmarcapi.records import RecordGetter
-from xml.etree import ElementTree as ET
 
 from getmarcapi import config
 
