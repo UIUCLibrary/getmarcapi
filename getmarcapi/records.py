@@ -148,7 +148,7 @@ class RecordGetter:
         return record
 
     def get_identifier(self, args: Mapping[str, str]) -> str:
-        """Parse the request args for the identifier requested, regardless of its type.
+        """Parse the request args for identifier requested, regardless type.
 
         Args:
             args: request args
