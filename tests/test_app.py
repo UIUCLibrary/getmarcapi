@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 
-from getmarcapi.app import get_cli_parser, main
+from getmarcapi.app import get_cli_parser, main, handle_no_records_found
 import pytest
 
 
@@ -17,3 +17,9 @@ def test_checks_arg_exits(is_valid, expected_exit_code, monkeypatch):
     with pytest.raises(SystemExit) as e:
         main(args, checker)
     assert e.value.code == expected_exit_code
+
+
+def test_handle_no_records_found_get_404():
+    no_records = Mock(record_identifier="123", identifier_type='mms_id')
+    response = handle_no_records_found(no_records)
+    assert response.status_code == 404
