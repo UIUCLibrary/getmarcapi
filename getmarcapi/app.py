@@ -139,15 +139,15 @@ def get_record() -> Response:
 
 
 @app.errorhandler(getmarc2.records.NoRecordsFound)
-def handle_no_records_found(e):
+def handle_no_records_found(error):
     """Return JSON instead of HTML for HTTP errors."""
     response = Response(status=404)
     root = ET.Element("data")
     record_identifier = ET.SubElement(root, 'record_identifier')
-    record_identifier.text = e.record_identifier
+    record_identifier.text = error.record_identifier
 
     identifier_type = ET.SubElement(root, 'identifier_type')
-    identifier_type.text = e.identifier_type
+    identifier_type.text = error.identifier_type
     response.data = ET.tostring(root)
     response.content_type = "application/xml"
     return response
