@@ -56,3 +56,15 @@ def test_mmsid_error_strategy(mmsid_request_args, monkeypatch):
         monkeypatch.setattr(getter._strategy, "get_record", mock_get_record)
         getter.get_record(server, mmsid_request_args['mms_id'])
     assert 'No record found' in str(excep.value)
+
+
+def test_bibid_error_strategy(bibid_request_args, monkeypatch):
+    getter = records.RecordGetter(args=bibid_request_args)
+
+    def mock_get_record(*args, **kwargs):
+        raise NoRecordsFound(Mock())
+    server = Mock()
+    with pytest.raises(ValueError) as excep:
+        monkeypatch.setattr(getter._strategy, "get_record", mock_get_record)
+        getter.get_record(server, bibid_request_args['bib_id'])
+    assert 'No record found' in str(excep.value)
