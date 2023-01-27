@@ -67,4 +67,15 @@ def test_bibid_error_strategy(bibid_request_args, monkeypatch):
     with pytest.raises(ValueError) as excep:
         monkeypatch.setattr(getter._strategy, "get_record", mock_get_record)
         getter.get_record(server, bibid_request_args['bib_id'])
-    assert 'No record found' in str(excep.value)
+
+
+def test_connection_error(bibid_request_args, monkeypatch):
+    getter = records.RecordGetter(args=bibid_request_args)
+
+    def mock_get_record(*args, **kwargs):
+        raise ConnectionError(Mock())
+    server = Mock()
+    monkeypatch.setattr(getter._strategy, "get_record", mock_get_record)
+    with pytest.raises(ConnectionError) as excep:
+        getter.get_record(server, bibid_request_args['bib_id'])
+    assert 'Unable retrieve record for sample' in str(excep.value)
