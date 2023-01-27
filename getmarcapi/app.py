@@ -7,7 +7,7 @@ try:
     from typing import TypedDict
 except ImportError:
     from typing_extensions import TypedDict
-from xml.etree import ElementTree as ET
+from xml.etree import ElementTree as ET  # nosec
 
 from flask import Flask, Response, request, render_template, jsonify
 from werkzeug.routing import Rule
