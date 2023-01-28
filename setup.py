@@ -74,7 +74,7 @@ setup(
     zip_safe=False,
     install_requires=[
         'flask',
-        'uiucprescon.getmarc2>=0.1.1',
+        'uiucprescon.getmarc2>=0.1.3',
         'typing-extensions;python_version<"3.8"'
 
     ],

@@ -15,5 +15,5 @@ sphinx
 sphinxcontrib.spelling
 tox
 typing-extensions;python_version<"3.8"
-uiucprescon.getmarc2>=0.1.1
+uiucprescon.getmarc2>=0.1.3
 wheel

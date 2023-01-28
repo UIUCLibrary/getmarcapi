@@ -7,6 +7,7 @@ try:
     from typing import TypedDict
 except ImportError:
     from typing_extensions import TypedDict
+from xml.etree import ElementTree as ET  # nosec
 
 from flask import Flask, Response, request, render_template, jsonify
 from werkzeug.routing import Rule
@@ -135,6 +136,21 @@ def get_record() -> Response:
         # pylint: disable=no-member
         app.logger.info("Failed to retrieve record")
         return Response(f"Failed. {error}", 400, content_type="text")
+
+
+@app.errorhandler(getmarc2.records.NoRecordsFound)
+def handle_no_records_found(error):
+    """Return JSON instead of HTML for HTTP errors."""
+    response = Response(status=404)
+    root = ET.Element("data")
+    record_identifier = ET.SubElement(root, 'record_identifier')
+    record_identifier.text = error.record_identifier
+
+    identifier_type = ET.SubElement(root, 'identifier_type')
+    identifier_type.text = error.identifier_type
+    response.data = ET.tostring(root)
+    response.content_type = "application/xml"
+    return response
 
 
 def get_cli_parser() -> argparse.ArgumentParser:
