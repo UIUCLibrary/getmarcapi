@@ -1,14 +1,35 @@
-SUPPORTED_LINUX_VERSIONS = ['3.7', '3.8', '3.9', '3.10']
-DEVPI_CONFIG = [
-    index: getDevPiStagingIndex(),
-    server: 'https://devpi.library.illinois.edu',
-    credentialsId: 'DS_devpi',
-]
+SUPPORTED_LINUX_VERSIONS = ['3.7', '3.8', '3.9', '3.10', '3.11']
+
+def getDevpiConfig() {
+    node(){
+        configFileProvider([configFile(fileId: 'devpi_config', variable: 'CONFIG_FILE')]) {
+            def configProperties = readProperties(file: CONFIG_FILE)
+            configProperties.stagingIndex = {
+                if (env.TAG_NAME?.trim()){
+                    return 'tag_staging'
+                } else{
+                    return "${env.BRANCH_NAME}_staging"
+                }
+            }()
+            return configProperties
+        }
+    }
+}
+def DEVPI_CONFIG = getDevpiConfig()
+
+def getPypiConfig() {
+    node(){
+        configFileProvider([configFile(fileId: 'pypi_config', variable: 'CONFIG_FILE')]) {
+            def config = readJSON( file: CONFIG_FILE)
+            return config['deployment']['indexes']
+        }
+    }
+}
 
 def getDevPiStagingIndex(){
 
     if (env.TAG_NAME?.trim()){
-        return "tag_staging"
+        return 'tag_staging'
     } else{
         return "${env.BRANCH_NAME}_staging"
     }
@@ -20,7 +41,7 @@ def get_sonarqube_unresolved_issues(report_task_file){
             error "File not found ${report_task_file}"
         }
         def props = readProperties  file: report_task_file
-        def response = httpRequest url : props['serverUrl'] + "/api/issues/search?componentKeys=" + props['projectKey'] + "&resolved=no"
+        def response = httpRequest url : props['serverUrl'] + "/api/issues/search?componentKeys=" + props['projectKey'] + '&resolved=no'
         def outstandingIssues = readJSON text: response.content
         return outstandingIssues
     }
@@ -36,7 +57,7 @@ def devpiRunTest(pkgPropertiesFile, devpiIndex, devpiSelector, devpiUsername, de
         def props = readProperties interpolate: false, file: pkgPropertiesFile
         if (isUnix()){
             sh(
-                label: "Running test",
+                label: 'Running test',
                 script: """devpi use https://devpi.library.illinois.edu --clientdir certs/
                            devpi login ${devpiUsername} --password ${devpiPassword} --clientdir certs/
                            devpi use ${devpiIndex} --clientdir certs/
@@ -45,7 +66,7 @@ def devpiRunTest(pkgPropertiesFile, devpiIndex, devpiSelector, devpiUsername, de
             )
         } else {
             bat(
-                label: "Running tests on Devpi",
+                label: 'Running tests on Devpi',
                 script: """devpi use https://devpi.library.illinois.edu --clientdir certs\\
                            devpi login ${devpiUsername} --password ${devpiPassword} --clientdir certs\\
                            devpi use ${devpiIndex} --clientdir certs\\
@@ -66,8 +87,102 @@ def loadHelper(file){
     }
 }
 
+def testPackages(){
+    script{
+        def packages
+        node(){
+            checkout scm
+            packages = load 'ci/jenkins/scripts/packaging.groovy'
+        }
+        def linuxTestStages = [:]
+        SUPPORTED_LINUX_VERSIONS.each{ pythonVersion ->
+            def architectures = ['x86']
+            if(params.INCLUDE_ARM_LINUX == true){
+                architectures.add("arm64")
+            }
+            architectures.each{ processorArchitecture ->
+                linuxTestStages["Linux-${processorArchitecture} - Python ${pythonVersion}: wheel"] = {
+                    packages.testPkg2(
+                        agent: [
+                            dockerfile: [
+                                label: "linux && docker && ${processorArchitecture}",
+                                filename: 'ci/docker/python/tox/Dockerfile',
+                                additionalBuildArgs: '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
+                            ]
+                        ],
+                        testSetup: {
+                            checkout scm
+                            unstash 'PYTHON_PACKAGES'
+                        },
+                        testCommand: {
+                            findFiles(glob: 'dist/*.whl').each{
+                                timeout(5){
+                                    sh(
+                                        label: 'Running Tox',
+                                        script: "tox --installpkg ${it.path} --workdir /tmp/tox -e py${pythonVersion.replace('.', '')}"
+                                        )
+                                }
+                            }
+                        },
+                        post:[
+                            cleanup: {
+                                cleanWs(
+                                    patterns: [
+                                            [pattern: 'dist/', type: 'INCLUDE'],
+                                            [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                        ],
+                                    notFailBuild: true,
+                                    deleteDirs: true
+                                )
+                            },
+                            success: {
+                                archiveArtifacts artifacts: 'dist/*.whl'
+                            },
+                        ]
+                    )
+                }
+                linuxTestStages["Linux-${processorArchitecture} - Python ${pythonVersion}: sdist"] = {
+                    packages.testPkg2(
+                        agent: [
+                            dockerfile: [
+                                label: "linux && docker && ${processorArchitecture}",
+                                filename: 'ci/docker/python/tox/Dockerfile',
+                                additionalBuildArgs: '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
+                            ]
+                        ],
+                        testSetup: {
+                            checkout scm
+                            unstash 'PYTHON_PACKAGES'
+                        },
+                        testCommand: {
+                            findFiles(glob: 'dist/*.tar.gz').each{
+                                sh(
+                                    label: 'Running Tox',
+                                    script: "tox --installpkg ${it.path} --workdir /tmp/tox -e py${pythonVersion.replace('.', '')}"
+                                    )
+                            }
+                        },
+                        post:[
+                            cleanup: {
+                                cleanWs(
+                                    patterns: [
+                                            [pattern: 'dist/', type: 'INCLUDE'],
+                                            [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                        ],
+                                    notFailBuild: true,
+                                    deleteDirs: true
+                                )
+                            },
+                        ]
+                    )
+                }
+            }
+        }
+        parallel(linuxTestStages)
+    }
+}
 def startup(){
-    stage("Getting Distribution Info"){
+    stage('Getting Distribution Info'){
         node('linux && docker && x86') {
             ws{
                 checkout scm
@@ -76,13 +191,13 @@ def startup(){
                         timeout(2){
 
                             sh(
-                                label: "Running setup.py with dist_info",
-                                script: """PIP_NO_CACHE_DIR=off python --version
+                                label: 'Running setup.py with dist_info',
+                                script: '''PIP_NO_CACHE_DIR=off python --version
                                            PIP_NO_CACHE_DIR=off python setup.py dist_info
-                                        """
+                                        '''
                             )
-                            stash includes: "*.dist-info/**", name: 'DIST-INFO'
-                            archiveArtifacts artifacts: "*.dist-info/**"
+                            stash includes: '*.dist-info/**', name: 'DIST-INFO'
+                            archiveArtifacts artifacts: '*.dist-info/**'
                         }
                     }
                 } finally{
@@ -109,77 +224,70 @@ startup()
 props = get_props()
 DEFAULT_DOCKER_AGENT_FILENAME = 'ci/docker/python/linux/Dockerfile'
 DEFAULT_DOCKER_AGENT_LABELS = 'linux && docker && x86'
-DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_INDEX_URL --build-arg PIP_EXTRA_INDEX_URL'
+DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
 
 pipeline {
     agent none
     parameters {
-        booleanParam(name: "RUN_CHECKS", defaultValue: true, description: "Run checks on code")
-        booleanParam(name: "TEST_RUN_TOX", defaultValue: false, description: "Run Tox Tests")
-        booleanParam(name: "USE_SONARQUBE", defaultValue: true, description: "Send data test data to SonarQube")
-        booleanParam(name: "BUILD_PACKAGES", defaultValue: false, description: "Build Python packages")
-        booleanParam(name: "DEPLOY_DEVPI", defaultValue: false, description: "Deploy to devpi on http://devpi.library.illinois.edu/DS_Jenkins/${env.BRANCH_NAME}")
-        booleanParam(name: "DEPLOY_DEVPI_PRODUCTION", defaultValue: false, description: "Deploy to production devpi on https://devpi.library.illinois.edu/production/release. Master branch Only")
+        booleanParam(name: 'RUN_CHECKS', defaultValue: true, description: 'Run checks on code')
+        booleanParam(name: 'TEST_RUN_TOX', defaultValue: false, description: 'Run Tox Tests')
+        booleanParam(name: 'USE_SONARQUBE', defaultValue: true, description: 'Send data test data to SonarQube')
+        booleanParam(name: 'BUILD_PACKAGES', defaultValue: false, description: 'Build Python packages')
+        booleanParam(name: 'TEST_PACKAGES', defaultValue: true, description: 'Test Python packages by installing them and running tests on the installed package')
+        booleanParam(name: 'INCLUDE_ARM_LINUX', defaultValue: false, description: 'Include ARM architecture for Linux')
+        booleanParam(name: 'DEPLOY_DEVPI', defaultValue: false, description: "Deploy to devpi on http://devpi.library.illinois.edu/DS_Jenkins/${env.BRANCH_NAME}")
+        booleanParam(name: 'DEPLOY_DEVPI_PRODUCTION', defaultValue: false, description: 'Deploy to production devpi on https://devpi.library.illinois.edu/production/release. Master branch Only')
+        booleanParam(name: 'DEPLOY_PYPI', defaultValue: false, description: 'Deploy to pypi')
         booleanParam(name: 'DEPLOY_DOCS', defaultValue: false, description: '')
-        booleanParam(name: "DEPLOY_TO_PRODUCTION", defaultValue: false, description: "Deploy to Production Server")
+        booleanParam(name: 'DEPLOY_TO_PRODUCTION', defaultValue: false, description: 'Deploy to Production Server')
     }
     stages {
-        stage("Getting Testing Environment Info"){
-            agent {
-                dockerfile {
-                    filename DEFAULT_DOCKER_AGENT_FILENAME
-                    label DEFAULT_DOCKER_AGENT_LABELS
-                    additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
-                }
-            }
-            steps{
-                timeout(5){
-                    sh(
-                        label: "Checking Installed Python Packages",
-                        script: "python -m pip list"
-                    )
-                }
-            }
-        }
-        stage("Checks") {
+        stage('Building and Testing'){
             when{
-                equals expected: true, actual: params.RUN_CHECKS
+                anyOf{
+                    equals expected: true, actual: params.RUN_CHECKS
+                    equals expected: true, actual: params.TEST_RUN_TOX
+                    equals expected: true, actual: params.DEPLOY_DEVPI
+                }
             }
             stages{
-                stage("Code Quality Checks"){
+                stage('Checks') {
+                    when{
+                        equals expected: true, actual: params.RUN_CHECKS
+                    }
                     stages{
-                        stage("Run Code Quality Checks"){
+                        stage('Code Quality Checks'){
                             agent {
                                 dockerfile {
                                     filename DEFAULT_DOCKER_AGENT_FILENAME
                                     label DEFAULT_DOCKER_AGENT_LABELS
                                     additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+                                    args '--mount source=sonar-cache-getmarcapi,target=/home/user/.sonar/cache'
                                 }
                             }
                             stages{
-                                stage("Configuring Testing Environment"){
+                                stage('Configuring Testing Environment'){
                                     steps{
                                         sh(
-                                            label: "Creating logging and report directories",
-                                            script: """
+                                            label: 'Creating logging and report directories',
+                                            script: '''
                                                 mkdir -p logs
                                                 mkdir -p reports/coverage
                                                 mkdir -p reports/doctests
                                                 mkdir -p reports/mypy/html
-                                            """
+                                            '''
                                         )
                                     }
                                 }
-                                stage("Running Tests"){
+                                stage('Running Tests'){
                                     parallel {
-                                        stage("PyTest"){
+                                        stage('PyTest'){
                                             steps{
-                                                sh script: "coverage run --parallel-mode --source getmarcapi -m pytest --junitxml=reports/pytest/junit-pytest.xml ", returnStatus: true
+                                                sh script: 'coverage run --parallel-mode --source getmarcapi -m pytest --junitxml=reports/pytest/junit-pytest.xml ', returnStatus: true
                                             }
                                             post {
                                                 always {
-                                                    junit "reports/pytest/junit-pytest.xml"
-                                                    stash includes: "reports/pytest/*.xml", name: 'PYTEST_REPORT'
+                                                    junit 'reports/pytest/junit-pytest.xml'
                                                 }
                                             }
                                         }
@@ -188,30 +296,28 @@ pipeline {
                                                 recordIssues(tools: [taskScanner(highTags: 'FIXME', includePattern: 'getmarcapi"F/**/*.py', normalTags: 'TODO')])
                                             }
                                         }
-
-            //                         stage("Doctest"){
-            //                             steps {
-            //                                 sh "coverage run --parallel-mode --source getmarcapi -m sphinx -b doctest -d build/docs/doctrees docs reports/doctest -w logs/doctest.log"
-            //                             }
-            //                             post{
-            //                                 always {
-            //                                     recordIssues(tools: [sphinxBuild(name: 'Sphinx Doctest', pattern: 'logs/doctest.log', id: 'doctest')])
-            //                                 }
-            //
-            //                             }
-            //                         }
-            //                         stage("Documentation Spell check"){
-            //                             steps {
-            //                                 catchError(buildResult: 'SUCCESS', message: 'Found spelling issues in documentation', stageResult: 'UNSTABLE') {
-            //                                     sh "python -m sphinx docs reports/doc_spellcheck -b spelling -d build/docs/doctrees"
-            //                                 }
-            //                             }
-            //                         }
-                                        stage("pyDocStyle"){
+                                        //   stage('Doctest'){
+                                        //       steps {
+                                        //           sh 'coverage run --parallel-mode --source getmarcapi -m sphinx -b doctest -d build/docs/doctrees docs reports/doctest -w logs/doctest.log'
+                                        //       }
+                                        //       post{
+                                        //           always {
+                                        //               recordIssues(tools: [sphinxBuild(name: 'Sphinx Doctest', pattern: 'logs/doctest.log', id: 'doctest')])
+                                        //           }
+                                        //       }
+                                        //   }
+                                        //   stage('Documentation Spell check'){
+                                        //       steps {
+                                        //           catchError(buildResult: 'SUCCESS', message: 'Found spelling issues in documentation', stageResult: 'UNSTABLE') {
+                                        //               sh 'python -m sphinx docs reports/doc_spellcheck -b spelling -d build/docs/doctrees'
+                                        //           }
+                                        //       }
+                                        //   }
+                                        stage('pyDocStyle'){
                                             steps{
                                                 catchError(buildResult: 'SUCCESS', message: 'Did not pass all pyDocStyle tests', stageResult: 'UNSTABLE') {
                                                     sh(
-                                                        label: "Run pydocstyle",
+                                                        label: 'Run pydocstyle',
                                                         script: '''mkdir -p reports
                                                                    pydocstyle getmarcapi > reports/pydocstyle-report.txt
                                                                    '''
@@ -224,7 +330,7 @@ pipeline {
                                                 }
                                             }
                                         }
-                                        stage("MyPy") {
+                                        stage('MyPy') {
                                             steps{
                                                 catchError(buildResult: 'SUCCESS', message: 'mypy found issues', stageResult: 'UNSTABLE') {
                                                     // Note: this misses the uiucprescon.getmarc2 namespace package stubs because of this issue https://github.com/python/mypy/issues/10045
@@ -238,12 +344,12 @@ pipeline {
                                                 }
                                             }
                                         }
-                                        stage("Bandit") {
+                                        stage('Bandit') {
                                             steps{
                                                 catchError(buildResult: 'SUCCESS', message: 'Bandit found issues', stageResult: 'UNSTABLE') {
                                                     sh(
-                                                        label: "Running bandit",
-                                                        script: "bandit --format json --output reports/bandit-report.json --recursive getmarcapi || bandit -f html --recursive getmarcapi --output reports/bandit-report.html"
+                                                        label: 'Running bandit',
+                                                        script: 'bandit --format json --output reports/bandit-report.json --recursive getmarcapi || bandit -f html --recursive getmarcapi --output reports/bandit-report.html'
                                                     )
                                                 }
                                             }
@@ -262,39 +368,35 @@ pipeline {
                                                         }
                                                     }
                                                 }
-                                                always {
-                                                    stash includes: "reports/bandit-report.json", name: 'BANDIT_REPORT'
-                                                }
                                             }
                                         }
-                                        stage("PyLint") {
+                                        stage('PyLint') {
                                             steps{
                                                 catchError(buildResult: 'SUCCESS', message: 'Pylint found issues', stageResult: 'UNSTABLE') {
-                                                    tee("reports/pylint.txt"){
+                                                    tee('reports/pylint.txt'){
                                                         sh(
                                                             script: '''pylint getmarcapi -r n --persistent=n --verbose --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}"
                                                                        ''',
-                                                            label: "Running pylint"
+                                                            label: 'Running pylint'
                                                         )
                                                     }
                                                 }
                                                 sh(
                                                     script: 'pylint getmarcapi  -r n --persistent=n --msg-template="{path}:{module}:{line}: [{msg_id}({symbol}), {obj}] {msg}" > reports/pylint_issues.txt',
-                                                    label: "Running pylint for sonarqube",
+                                                    label: 'Running pylint for sonarqube',
                                                     returnStatus: true
                                                 )
                                             }
                                             post{
                                                 always{
-                                                    stash includes: "reports/pylint_issues.txt,reports/pylint.txt", name: 'PYLINT_REPORT'
                                                     recordIssues(tools: [pyLint(pattern: 'reports/pylint.txt')])
                                                 }
                                             }
                                         }
-                                        stage("Flake8") {
+                                        stage('Flake8') {
                                             steps{
                                                 catchError(buildResult: 'SUCCESS', message: 'Flake8 found issues', stageResult: 'UNSTABLE') {
-                                                    sh(label: "Running Flake8",
+                                                    sh(label: 'Running Flake8',
                                                        script: '''mkdir -p logs
                                                                   flake8 getmarcapi --tee --output-file=logs/flake8.log
                                                                '''
@@ -304,7 +406,6 @@ pipeline {
                                             post {
                                                 always {
                                                     recordIssues(tools: [flake8(name: 'Flake8', pattern: 'logs/flake8.log')])
-                                                    stash includes: "logs/flake8.log", name: 'FLAKE8_REPORT'
                                                 }
                                             }
                                         }
@@ -312,12 +413,11 @@ pipeline {
                                     post{
                                         always{
                                             sh(
-                                                label: "Combining coverage results",
+                                                label: 'Combining coverage results',
                                                 script: '''coverage combine
                                                            coverage xml -o reports/coverage.xml
                                                            '''
                                             )
-                                            stash includes: "reports/coverage.xml", name: 'COVERAGE_REPORT'
                                             publishCoverage(
                                                 adapters: [
                                                     coberturaAdapter('reports/coverage.xml')
@@ -326,130 +426,109 @@ pipeline {
                                             )
 
                                         }
+                                    }
+                                }
+                                stage('Sonarcloud Analysis'){
+                                    options{
+                                        lock('getmarcapi-sonarscanner')
+                                        retry(3)
+                                    }
+                                    when{
+                                        equals expected: true, actual: params.USE_SONARQUBE
+                                        beforeAgent true
+                                        beforeOptions true
+                                    }
+                                    steps{
+                                        script{
+
+                                            withSonarQubeEnv(installationName:'sonarcloud', credentialsId: 'sonarcloud-getmarcapi') {
+                                                if (env.CHANGE_ID){
+                                                    sh(
+                                                        label: 'Running Sonar Scanner',
+                                                        script:"sonar-scanner -Dsonar.projectVersion=${props.Version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.CHANGE_TARGET}"
+                                                        )
+                                                } else {
+                                                    sh(
+                                                        label: 'Running Sonar Scanner',
+                                                        script: "sonar-scanner -Dsonar.projectVersion=${props.Version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.branch.name=${env.BRANCH_NAME}"
+                                                        )
+                                                }
+                                            }
+                                            milestone label: 'sonarcloud'
+                                            timeout(time: 1, unit: 'HOURS') {
+                                                def sonarqube_result = waitForQualityGate(abortPipeline: false)
+                                                if (sonarqube_result.status != 'OK') {
+                                                    unstable "SonarQube quality gate: ${sonarqube_result.status}"
+                                                }
+                                                def outstandingIssues = get_sonarqube_unresolved_issues('.scannerwork/report-task.txt')
+                                                writeJSON file: 'reports/sonar-report.json', json: outstandingIssues
+                                            }
+                                        }
+                                    }
+                                    post {
+                                        always{
+                                            script{
+                                                if(fileExists('reports/sonar-report.json')){
+                                                    stash includes: 'reports/sonar-report.json', name: 'SONAR_REPORT'
+                                                    archiveArtifacts allowEmptyArchive: true, artifacts: 'reports/sonar-report.json'
+                                                    recordIssues(tools: [sonarQube(pattern: 'reports/sonar-report.json')])
+                                                }
+                                            }
+                                        }
                                         cleanup{
                                             cleanWs(
                                                 deleteDirs: true,
                                                 patterns: [
-                                                    [pattern: "dist/", type: 'INCLUDE'],
+                                                    [pattern: 'reports/', type: 'INCLUDE'],
+                                                    [pattern: 'logs/', type: 'INCLUDE'],
+                                                    [pattern: 'getmarcapi.dist-info/', type: 'INCLUDE'],
+                                                    [pattern: '.scannerwork/', type: 'INCLUDE'],
+                                                    [pattern: 'dist/', type: 'INCLUDE'],
                                                     [pattern: 'build/', type: 'INCLUDE'],
                                                     [pattern: '.coverage', type: 'INCLUDE'],
                                                     [pattern: '.eggs', type: 'INCLUDE'],
                                                     [pattern: '.pytest_cache/', type: 'INCLUDE'],
                                                     [pattern: '**/__pycache__/', type: 'INCLUDE'],
                                                     [pattern: '.mypy_cache/', type: 'INCLUDE'],
-                                                    [pattern: '.tox/', type: 'INCLUDE'],
                                                     [pattern: 'getmarcapi1.stats', type: 'INCLUDE'],
                                                     [pattern: 'getmarcapi.egg-info/', type: 'INCLUDE'],
                                                     [pattern: 'reports/', type: 'INCLUDE'],
                                                     [pattern: 'logs/', type: 'INCLUDE']
-                                                    ]
+                                                ]
                                             )
                                         }
                                     }
                                 }
                             }
                         }
-                        stage("Sonarcloud Analysis"){
-                            agent {
-                                dockerfile {
-                                    filename DEFAULT_DOCKER_AGENT_FILENAME
-                                    label DEFAULT_DOCKER_AGENT_LABELS
-                                    additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
-                                    args '--mount source=sonar-cache-getmarcapi,target=/home/user/.sonar/cache'
-                                }
-                            }
-                            options{
-                                lock("getmarcapi-sonarscanner")
-                                retry(3)
-                            }
+                        stage('Tox'){
                             when{
-                                equals expected: true, actual: params.USE_SONARQUBE
-                                beforeAgent true
-                                beforeOptions true
+                                equals expected: true, actual: params.TEST_RUN_TOX
                             }
                             steps{
-                                unstash "COVERAGE_REPORT"
-                                unstash "PYTEST_REPORT"
-                                unstash "BANDIT_REPORT"
-                                unstash "PYLINT_REPORT"
-                                unstash "FLAKE8_REPORT"
                                 script{
-
-                                    withSonarQubeEnv(installationName:"sonarcloud", credentialsId: 'sonarcloud-getmarcapi') {
-                                        if (env.CHANGE_ID){
-                                            sh(
-                                                label: "Running Sonar Scanner",
-                                                script:"sonar-scanner -Dsonar.projectVersion=${props.Version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.CHANGE_TARGET}"
-                                                )
-                                        } else {
-                                            sh(
-                                                label: "Running Sonar Scanner",
-                                                script: "sonar-scanner -Dsonar.projectVersion=${props.Version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.branch.name=${env.BRANCH_NAME}"
-                                                )
-                                        }
-                                    }
-                                    milestone label: 'sonarcloud'
-                                    timeout(time: 1, unit: 'HOURS') {
-                                        def sonarqube_result = waitForQualityGate(abortPipeline: false)
-                                        if (sonarqube_result.status != 'OK') {
-                                            unstable "SonarQube quality gate: ${sonarqube_result.status}"
-                                        }
-                                        def outstandingIssues = get_sonarqube_unresolved_issues(".scannerwork/report-task.txt")
-                                        writeJSON file: 'reports/sonar-report.json', json: outstandingIssues
-                                    }
-                                }
-                            }
-                            post {
-                                always{
-                                    script{
-                                        if(fileExists('reports/sonar-report.json')){
-                                            stash includes: "reports/sonar-report.json", name: 'SONAR_REPORT'
-                                            archiveArtifacts allowEmptyArchive: true, artifacts: 'reports/sonar-report.json'
-                                            recordIssues(tools: [sonarQube(pattern: 'reports/sonar-report.json')])
-                                        }
-                                    }
-                                }
-                                cleanup{
-                                    cleanWs(
-                                        deleteDirs: true,
-                                        patterns: [
-                                            [pattern: 'reports/', type: 'INCLUDE'],
-                                            [pattern: 'logs/', type: 'INCLUDE'],
-                                            [pattern: 'getmarcapi.dist-info/', type: 'INCLUDE'],
-                                            [pattern: '.scannerwork/', type: 'INCLUDE'],
-                                        ]
+                                    def tox = fileLoader.fromGit(
+                                        'tox',
+                                        'https://github.com/UIUCLibrary/jenkins_helper_scripts.git',
+                                        '4',
+                                        null,
+                                        ''
                                     )
+                                    def jobs = tox.getToxTestsParallel(
+                                                        envNamePrefix: 'Linux',
+                                                        label: DEFAULT_DOCKER_AGENT_LABELS,
+                                                        dockerfile: 'ci/docker/python/tox/Dockerfile',
+                                                        dockerArgs: DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+                                                 )
+                                    parallel(jobs)
                                 }
                             }
-                        }
-                    }
-                }
-                stage("Tox"){
-                    when{
-                        equals expected: true, actual: params.TEST_RUN_TOX
-                    }
-                    steps{
-                        script{
-                            def tox = fileLoader.fromGit(
-                                'tox',
-                                'https://github.com/UIUCLibrary/jenkins_helper_scripts.git',
-                                '4',
-                                null,
-                                ''
-                            )
-                            def jobs = tox.getToxTestsParallel(
-                                                envNamePrefix: "Linux",
-                                                label: DEFAULT_DOCKER_AGENT_LABELS,
-                                                dockerfile: 'ci/docker/python/tox/Dockerfile',
-                                                dockerArgs: DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
-                                         )
-                            parallel(jobs)
                         }
                     }
                 }
             }
         }
-        stage("Distribution Packages"){
+        stage('Distribution Packages'){
             when{
                 anyOf{
                     equals expected: true, actual: params.BUILD_PACKAGES
@@ -459,23 +538,32 @@ pipeline {
                 beforeAgent true
             }
             stages{
-                stage("Creating Package") {
+                stage('Packaging sdist and wheel'){
                     agent {
+                        // This needs to be a specific agent/Dockerfile
+                        // container that npm is installed because it is part
+                        // of the build chain
                         dockerfile {
                             filename DEFAULT_DOCKER_AGENT_FILENAME
                             label DEFAULT_DOCKER_AGENT_LABELS
                             additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                         }
                     }
-                    steps {
-                        sh(label: "Building python distribution packages", script: 'python -m build .')
+                    steps{
+                        timeout(5){
+                            withEnv(['PIP_NO_CACHE_DIR=off']) {
+                                sh(label: 'Building Python Package',
+                                   script: '''python -m venv venv --upgrade-deps
+                                              venv/bin/pip install build
+                                              venv/bin/python -m build .
+                                              '''
+                                   )
+                           }
+                        }
                     }
                     post{
                         always{
-                            stash includes: 'dist/*.*', name: "PYTHON_PACKAGES"
-                        }
-                        success {
-                            archiveArtifacts artifacts: "dist/*.whl,dist/*.tar.gz,dist/*.zip", fingerprint: true
+                            stash includes: 'dist/*.whl,dist/*.tar.gz,dist/*.zip', name: 'PYTHON_PACKAGES'
                         }
                         cleanup{
                             cleanWs(
@@ -489,460 +577,264 @@ pipeline {
                         }
                     }
                 }
-                stage('Testing all Package') {
-                    matrix{
-                        axes{
-                            axis {
-                                name "PYTHON_VERSION"
-                                values(
-                                    "3.7",
-                                    "3.8"
-                                )
-                            }
-                        }
-                        agent {
-                            dockerfile {
-                                filename DEFAULT_DOCKER_AGENT_FILENAME
-                                label DEFAULT_DOCKER_AGENT_LABELS
-                                additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL"
-                            }
-                        }
-                        stages{
-                            stage("Testing Package sdist"){
-                                options {
-                                    warnError('Package Testing Failed')
-                                }
-                                steps{
-                                    unstash "PYTHON_PACKAGES"
-                                    script{
-                                        findFiles(glob: "**/*.tar.gz").each{
-                                            timeout(15){
-                                                sh(
-                                                    script: """python --version
-                                                               tox --installpkg=${it.path} -e py -vv
-                                                               """,
-                                                    label: "Testing ${it}"
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                                post{
-                                    cleanup{
-                                        cleanWs(
-                                            notFailBuild: true,
-                                            deleteDirs: true,
-                                            patterns: [
-                                                [pattern: 'dist/', type: 'INCLUDE'],
-                                                [pattern: 'tests/__pycache__/', type: 'INCLUDE'],
-                                                [pattern: 'build/', type: 'INCLUDE'],
-                                                [pattern: '.tox/', type: 'INCLUDE'],
-                                            ]
-                                        )
-                                    }
-                                }
-                            }
-                            stage("Testing Package Wheel"){
-                                options {
-                                    warnError('Package Testing Failed')
-                                }
-                                steps{
-                                    unstash "PYTHON_PACKAGES"
-                                    script{
-                                        findFiles(glob: "**/*.whl").each{
-                                            timeout(15){
-                                                sh(
-                                                    script: """python --version
-                                                               tox --installpkg=${it.path} -e py -vv
-                                                               """,
-                                                    label: "Testing ${it}"
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                                post{
-                                    cleanup{
-                                        cleanWs(
-                                            notFailBuild: true,
-                                            deleteDirs: true,
-                                            patterns: [
-                                                [pattern: 'dist/', type: 'INCLUDE'],
-                                                [pattern: 'tests/__pycache__/', type: 'INCLUDE'],
-                                                [pattern: 'build/', type: 'INCLUDE'],
-                                                [pattern: '.tox/', type: 'INCLUDE'],
-                                            ]
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                stage('Testing'){
+                    when{
+                        equals expected: true, actual: params.TEST_PACKAGES
+                    }
+                    steps{
+                        testPackages()
                     }
                 }
             }
         }
-        stage("Deployment"){
+        stage('Deployment'){
             stages{
-//                 stage("Deploy to Devpi"){
-//                     when {
-//                         allOf{
-//                             equals expected: true, actual: params.DEPLOY_DEVPI
-//                             anyOf {
-//                                 equals expected: "master", actual: env.BRANCH_NAME
-//                                 equals expected: "dev", actual: env.BRANCH_NAME
-//                                 tag "*"
-//                             }
-//                         }
-//                         beforeAgent true
-//                         beforeOptions true
-//                     }
-//                     agent none
-//                     environment{
-//                         DEVPI = credentials("DS_devpi")
-//                         devpiStagingIndex = getDevPiStagingIndex()
-//                     }
-//                     options{
-//                         lock("getmarcapi-devpi")
-//                     }
-//                     stages{
-//                         stage("Deploy to Devpi Staging") {
-//                             agent{
-//                                 dockerfile {
-//                                     filename DEFAULT_DOCKER_AGENT_FILENAME
-//                                     label 'linux && docker && x86 && devpi-access'
-//                                     additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
-//                                 }
-//                             }
-//                             steps {
-//                                 unstash "PYTHON_PACKAGES"
-//                                 unstash "DOCS_ARCHIVE"
-//                                 sh(
-//                                     label: "Uploading to DevPi Staging",
-//                                     script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
-//                                                devpi login $DEVPI_USR --password $DEVPI_PSW --clientdir ./devpi
-//                                                devpi use /${env.DEVPI_USR}/${env.devpiStagingIndex} --clientdir ./devpi
-//                                                devpi upload --from-dir dist --clientdir ./devpi"""
-//                                 )
-//                             }
-//                         }
-//                         stage("Test DevPi Package") {
-//                             matrix {
-//                                 axes {
-//                                     axis {
-//                                         name 'PYTHON_VERSION'
-//                                         values '3.7', '3.8'
-//                                     }
-//                                 }
-//                                 agent none
-//                                 stages{
-//                                     stage("Testing DevPi wheel Package"){
-//                                         agent {
-//                                             dockerfile {
-//                                                 filename DEFAULT_DOCKER_AGENT_FILENAME
-//                                                 label 'linux && docker && x86 && devpi-access'
-//                                                 additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL"
-//                                             }
-//                                         }
-//                                         options {
-//                                             warnError('Package Testing Failed')
-//                                         }
-//                                         steps{
-//                                             timeout(10){
-//                                                 unstash "DIST-INFO"
-//                                                 devpiRunTest(
-//                                                     "getmarcapi.dist-info/METADATA",
-//                                                     env.devpiStagingIndex,
-//                                                     "whl",
-//                                                     DEVPI_USR,
-//                                                     DEVPI_PSW,
-//                                                     "py${PYTHON_VERSION.replace('.', '')}"
-//                                                     )
-//                                             }
-//                                         }
-//                                     }
-//                                     stage("Testing DevPi sdist Package"){
-//                                         agent {
-//                                             dockerfile {
-//                                                 filename DEFAULT_DOCKER_AGENT_FILENAME
-//                                                 label 'linux && docker && x86 && devpi-access'
-//                                                 additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL"
-//                                             }
-//                                         }
-//                                         options {
-//                                             warnError('Package Testing Failed')
-//                                         }
-//                                         steps{
-//                                             timeout(10){
-//                                                 unstash "DIST-INFO"
-//                                                 devpiRunTest(
-//                                                     "getmarcapi.dist-info/METADATA",
-//                                                     env.devpiStagingIndex,
-//                                                     "tar.gz",
-//                                                     DEVPI_USR,
-//                                                     DEVPI_PSW,
-//                                                     "py${PYTHON_VERSION.replace('.', '')}"
-//                                                     )
-//                                             }
-//                                         }
-//                                     }
-//                                 }
-//                             }
-//                         }
-//                         stage("Deploy to DevPi Production") {
-//                             when {
-//                                 allOf{
-//                                     equals expected: true, actual: params.DEPLOY_DEVPI_PRODUCTION
-//                                     anyOf {
-//                                         branch "master"
-//                                         tag "*"
-//                                     }
-//                                 }
-//                                 beforeInput true
-//                             }
-//                             options{
-//                                   timeout(time: 1, unit: 'DAYS')
-//                             }
-//                             input {
-//                               message 'Release to DevPi Production? '
-//                             }
-//                             agent {
-//                                 dockerfile {
-//                                     filename DEFAULT_DOCKER_AGENT_FILENAME
-//                                     label 'linux && docker && x86 && devpi-access'
-//                                     additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
-//                                 }
-//                             }
-//                             steps {
-//                                 script {
-//                                     sh(
-//                                         label: "Pushing to production/release index",
-//                                         script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
-//                                                    devpi login $DEVPI_USR --password $DEVPI_PSW --clientdir ./devpi
-//                                                    devpi push --index DS_Jenkins/${env.devpiStagingIndex} ${props.Name}==${props.Version} production/release --clientdir ./devpi
-//                                                    """
-//                                     )
-//                                 }
-//                             }
-//                         }
-//                     }
-//                     post{
-//                         success{
-//                             node('linux && docker && devpi-access') {
-//                                script{
-//                                     if (!env.TAG_NAME?.trim()){
-//                                         docker.build("getmarc:devpi",'-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL .').inside{
-//                                             sh(
-//                                                 label: "Moving DevPi package from staging index to index",
-//                                                 script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
-//                                                            devpi login $DEVPI_USR --password $DEVPI_PSW --clientdir ./devpi
-//                                                            devpi use /DS_Jenkins/${env.devpiStagingIndex} --clientdir ./devpi
-//                                                            devpi push ${props.Name}==${props.Version} DS_Jenkins/${env.BRANCH_NAME} --clientdir ./devpi
-//                                                            """
-//                                             )
-//                                         }
-//                                    }
-//                                }
-//                             }
-//                         }
-//                         cleanup{
-//                             node('linux && docker && devpi-access') {
-//                                script{
-//                                     docker.build("getmarc:devpi",'-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL .').inside{
-//                                         sh(
-//                                             label: "Removing Package from DevPi staging index",
-//                                             script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
-//                                                        devpi login $DEVPI_USR --password $DEVPI_PSW --clientdir ./devpi
-//                                                        devpi use /DS_Jenkins/${env.devpiStagingIndex} --clientdir ./devpi
-//                                                        devpi remove -y ${props.Name}==${props.Version} --clientdir ./devpi
-//                                                        """
-//                                            )
-//                                     }
-//                                }
-//                             }
-//                         }
-//                     }
-//                 }
-            stage("Deploy to Devpi"){
-                when {
-                    allOf{
-                        anyOf{
-                            equals expected: true, actual: params.DEPLOY_DEVPI
-                        }
-                        anyOf {
-                            equals expected: 'master', actual: env.BRANCH_NAME
-                            equals expected: 'dev', actual: env.BRANCH_NAME
-                            tag '*'
-                        }
-                    }
-                    beforeAgent true
-                    beforeOptions true
-                }
-                agent none
-                options{
-                    lock("pyhathiprep-devpi")
-                }
-                stages{
-                    stage('Uploading to DevPi Staging'){
-                        agent {
-                            dockerfile {
-                                filename 'ci/docker/python/tox/Dockerfile'
-                                label 'linux && docker && devpi-access'
-                                additionalBuildArgs "--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL"
+                stage('Deploy to Devpi'){
+                    when {
+                        allOf{
+                            anyOf{
+                                equals expected: true, actual: params.DEPLOY_DEVPI
+                            }
+                            anyOf {
+                                equals expected: 'master', actual: env.BRANCH_NAME
+                                equals expected: 'dev', actual: env.BRANCH_NAME
+                                tag '*'
                             }
                         }
-                        steps {
-                            timeout(5){
-                                unstash 'PYTHON_PACKAGES'
-                                script{
-                                    devpi.upload(
-                                            server: DEVPI_CONFIG.server,
-                                            credentialsId: DEVPI_CONFIG.credentialsId,
-                                            index: DEVPI_CONFIG.index,
-                                            clientDir: './devpi'
-                                        )
+                        beforeAgent true
+                        beforeOptions true
+                    }
+                    agent none
+                    options{
+                        lock('pyhathiprep-devpi')
+                    }
+                    stages{
+                        stage('Uploading to DevPi Staging'){
+                            agent {
+                                dockerfile {
+                                    filename 'ci/docker/python/tox/Dockerfile'
+                                    label 'linux && docker && devpi-access'
+                                    additionalBuildArgs '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
                                 }
                             }
-                        }
-                        post{
-                            cleanup{
-                                cleanWs(
-                                    deleteDirs: true,
-                                    patterns: [
-                                        [pattern: 'dist/', type: 'INCLUDE'],
-                                        [pattern: '*.dist-info/', type: 'INCLUDE'],
-                                        [pattern: 'build/', type: 'INCLUDE']
-                                    ]
-                                )
-                            }
-                        }
-                    }
-                    stage('Test DevPi packages') {
-                        steps{
-                            script{
-                                def linuxPackages = [:]
-                                SUPPORTED_LINUX_VERSIONS.each{pythonVersion ->
-                                    linuxPackages["Test Python ${pythonVersion}: sdist Linux"] = {
-                                        devpi.testDevpiPackage(
-                                            agent: [
-                                                dockerfile: [
-                                                    filename: 'ci/docker/python/tox/Dockerfile',
-                                                    additionalBuildArgs: "--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL",
-                                                    label: 'linux && docker && x86 && devpi-access'
-                                                ]
-                                            ],
-                                            devpi: DEVPI_CONFIG,
-                                            package:[
-                                                name: props.Name,
-                                                version: props.Version,
-                                                selector: 'tar.gz'
-                                            ],
-                                            test:[
-                                                toxEnv: "py${pythonVersion}".replace('.',''),
-                                            ]
-                                        )
-                                    }
-                                    linuxPackages["Test Python ${pythonVersion}: wheel Linux"] = {
-                                        devpi.testDevpiPackage(
-                                            agent: [
-                                                dockerfile: [
-                                                    filename: 'ci/docker/python/tox/Dockerfile',
-                                                    additionalBuildArgs: "--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL",
-                                                    label: 'linux && docker && x86 && devpi-access'
-                                                ]
-                                            ],
-                                            devpi: DEVPI_CONFIG,
-                                            package:[
-                                                name: props.Name,
-                                                version: props.Version,
-                                                selector: 'whl'
-                                            ],
-                                            test:[
-                                                toxEnv: "py${pythonVersion}".replace('.',''),
-                                            ]
-                                        )
-                                    }
-                                }
-                                parallel(linuxPackages)
-                            }
-                        }
-                    }
-                    stage('Deploy to DevPi Production') {
-                        when {
-                            allOf{
-                                equals expected: true, actual: params.DEPLOY_DEVPI_PRODUCTION
-                                anyOf {
-                                    equals expected: 'master', actual: env.BRANCH_NAME
-                                    tag '*'
-                                }
-                            }
-                            beforeAgent true
-                            beforeInput true
-                        }
-                        agent {
-                            dockerfile {
-                                filename 'ci/docker/python/tox/Dockerfile'
-                                label 'linux && docker && devpi-access'
-                                additionalBuildArgs '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
-                              }
-                        }
-                        input {
-                            message 'Release to DevPi Production?'
-                        }
-                        steps {
-                            script{
-                                devpi.pushPackageToIndex(
-                                    pkgName: props.Name,
-                                    pkgVersion: props.Version,
-                                    server: DEVPI_CONFIG.server,
-                                    indexSource: DEVPI_CONFIG.index,
-                                    indexDestination: 'production/release',
-                                    credentialsId: DEVPI_CONFIG.credentialsId
-                                )
-                            }
-                        }
-                    }
-                }
-                post{
-                    success{
-                        node('linux && docker && devpi-access') {
-                            checkout scm
-                            script{
-                                if (!env.TAG_NAME?.trim()){
-                                    docker.build("pyhathiprep:devpi",'-f ./ci/docker/python/tox/Dockerfile --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL .').inside{
-                                        devpi.pushPackageToIndex(
-                                            pkgName: props.Name,
-                                            pkgVersion: props.Version,
-                                            server: DEVPI_CONFIG.server,
-                                            indexSource: DEVPI_CONFIG.index,
-                                            indexDestination: "DS_Jenkins/${env.BRANCH_NAME}",
-                                            credentialsId: DEVPI_CONFIG.credentialsId
-                                        )
+                            steps {
+                                timeout(5){
+                                    unstash 'PYTHON_PACKAGES'
+                                    script{
+                                        devpi.upload(
+                                                server: DEVPI_CONFIG.server,
+                                                credentialsId: DEVPI_CONFIG.credentialsId,
+                                                index: DEVPI_CONFIG.stagingIndex,
+                                                clientDir: './devpi'
+                                            )
                                     }
                                 }
                             }
-                        }
-                    }
-                    cleanup{
-                        node('linux && docker && x86 && devpi-access') {
-                           script{
-                                docker.build("pyhathiprep:devpi",'-f ./ci/docker/python/tox/Dockerfile --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL .').inside{
-                                    devpi.removePackage(
-                                        pkgName: props.Name,
-                                        pkgVersion: props.Version,
-                                        index: DEVPI_CONFIG.index,
-                                        server: DEVPI_CONFIG.server,
-                                        credentialsId: DEVPI_CONFIG.credentialsId,
-
+                            post{
+                                cleanup{
+                                    cleanWs(
+                                        deleteDirs: true,
+                                        patterns: [
+                                            [pattern: 'dist/', type: 'INCLUDE'],
+                                            [pattern: '*.dist-info/', type: 'INCLUDE'],
+                                            [pattern: 'build/', type: 'INCLUDE']
+                                        ]
                                     )
                                 }
-                           }
+                            }
+                        }
+                        stage('Test DevPi packages') {
+                            steps{
+                                script{
+                                    def linuxPackages = [:]
+                                    SUPPORTED_LINUX_VERSIONS.each{pythonVersion ->
+                                        linuxPackages["Test Python ${pythonVersion}: sdist Linux"] = {
+                                            devpi.testDevpiPackage(
+                                                agent: [
+                                                    dockerfile: [
+                                                        filename: 'ci/docker/python/tox/Dockerfile',
+                                                        additionalBuildArgs: '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL',
+                                                        label: 'linux && docker && x86 && devpi-access'
+                                                    ]
+                                                ],
+                                                 devpi: [
+                                                    index: DEVPI_CONFIG.stagingIndex,
+                                                    server: DEVPI_CONFIG.server,
+                                                    credentialsId: DEVPI_CONFIG.credentialsId,
+                                                ],
+                                                package:[
+                                                    name: props.Name,
+                                                    version: props.Version,
+                                                    selector: 'tar.gz'
+                                                ],
+                                                test:[
+                                                    toxEnv: "py${pythonVersion}".replace('.',''),
+                                                ]
+                                            )
+                                        }
+                                        linuxPackages["Test Python ${pythonVersion}: wheel Linux"] = {
+                                            devpi.testDevpiPackage(
+                                                agent: [
+                                                    dockerfile: [
+                                                        filename: 'ci/docker/python/tox/Dockerfile',
+                                                        additionalBuildArgs: '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL',
+                                                        label: 'linux && docker && x86 && devpi-access'
+                                                    ]
+                                                ],
+                                                 devpi: [
+                                                    index: DEVPI_CONFIG.stagingIndex,
+                                                    server: DEVPI_CONFIG.server,
+                                                    credentialsId: DEVPI_CONFIG.credentialsId,
+                                                ],
+                                                package:[
+                                                    name: props.Name,
+                                                    version: props.Version,
+                                                    selector: 'whl'
+                                                ],
+                                                test:[
+                                                    toxEnv: "py${pythonVersion}".replace('.',''),
+                                                ]
+                                            )
+                                        }
+                                    }
+                                    parallel(linuxPackages)
+                                }
+                            }
+                        }
+                        stage('Deploy to DevPi Production') {
+                            when {
+                                allOf{
+                                    equals expected: true, actual: params.DEPLOY_DEVPI_PRODUCTION
+                                    anyOf {
+                                        equals expected: 'master', actual: env.BRANCH_NAME
+                                        tag '*'
+                                    }
+                                }
+                                beforeAgent true
+                                beforeInput true
+                            }
+                            agent {
+                                dockerfile {
+                                    filename 'ci/docker/python/tox/Dockerfile'
+                                    label 'linux && docker && devpi-access'
+                                    additionalBuildArgs '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
+                                  }
+                            }
+                            input {
+                                message 'Release to DevPi Production?'
+                            }
+                            steps {
+                                script{
+                                    devpi.pushPackageToIndex(
+                                        pkgName: props.Name,
+                                        pkgVersion: props.Version,
+                                        server: DEVPI_CONFIG.server,
+                                        indexSource: DEVPI_CONFIG.stagingIndex,
+                                        indexDestination: 'production/release',
+                                        credentialsId: DEVPI_CONFIG.credentialsId
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    post{
+                        success{
+                            node('linux && docker && devpi-access') {
+                                checkout scm
+                                script{
+                                    if (!env.TAG_NAME?.trim()){
+                                        docker.build('pyhathiprep:devpi','-f ./ci/docker/python/tox/Dockerfile --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL .').inside{
+                                            devpi.pushPackageToIndex(
+                                                pkgName: props.Name,
+                                                pkgVersion: props.Version,
+                                                server: DEVPI_CONFIG.server,
+                                                indexSource: DEVPI_CONFIG.stagingIndex,
+                                                indexDestination: "DS_Jenkins/${env.BRANCH_NAME}",
+                                                credentialsId: DEVPI_CONFIG.credentialsId
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        cleanup{
+                            node('linux && docker && x86 && devpi-access') {
+                               script{
+                                    docker.build('pyhathiprep:devpi','-f ./ci/docker/python/tox/Dockerfile --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL .').inside{
+                                        devpi.removePackage(
+                                            pkgName: props.Name,
+                                            pkgVersion: props.Version,
+                                            index: DEVPI_CONFIG.stagingIndex,
+                                            server: DEVPI_CONFIG.server,
+                                            credentialsId: DEVPI_CONFIG.credentialsId,
+
+                                        )
+                                    }
+                               }
+                            }
                         }
                     }
                 }
-            }
-                stage("Additional Deploy") {
+                stage('Additional Deploy') {
                     parallel{
-                        stage("Deploy Docker"){
+                        stage('Deploy to pypi') {
+                            agent {
+                                dockerfile {
+                                    filename DEFAULT_DOCKER_AGENT_FILENAME
+                                    label DEFAULT_DOCKER_AGENT_LABELS
+                                    additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+                                }
+                            }
+                            when{
+                                allOf{
+                                    equals expected: true, actual: params.DEPLOY_PYPI
+                                    equals expected: true, actual: params.BUILD_PACKAGES
+                                }
+                                beforeAgent true
+                                beforeInput true
+                            }
+                            options{
+                                retry(3)
+                            }
+                            input {
+                                message 'Upload to pypi server?'
+                                parameters {
+                                    choice(
+                                        choices: getPypiConfig(),
+                                        description: 'Url to the pypi index to upload python packages.',
+                                        name: 'SERVER_URL'
+                                    )
+                                }
+                            }
+                            steps{
+                                unstash 'PYTHON_PACKAGES'
+                                script{
+                                    def pypi = fileLoader.fromGit(
+                                            'pypi',
+                                            'https://github.com/UIUCLibrary/jenkins_helper_scripts.git',
+                                            '2',
+                                            null,
+                                            ''
+                                        )
+                                    pypi.pypiUpload(
+                                        credentialsId: 'jenkins-nexus',
+                                        repositoryUrl: SERVER_URL,
+                                        glob: 'dist/*'
+                                        )
+                                }
+                            }
+                            post{
+                                cleanup{
+                                    cleanWs(
+                                        deleteDirs: true,
+                                        patterns: [
+                                                [pattern: 'dist/', type: 'INCLUDE']
+                                            ]
+                                    )
+                                }
+                            }
+                        }
+                        stage('Deploy Docker'){
                             when{
                                 equals expected: true, actual: params.DEPLOY_TO_PRODUCTION
                                 beforeAgent true
@@ -952,45 +844,46 @@ pipeline {
                                 message 'Deploy to to server'
                                 parameters {
                                     string defaultValue: props.Version, description: 'Tag associated with the docker image', name: 'DOCKER_TAG', trim: true
-                                    string defaultValue: "getmarcapi", description: 'Name used for the image by Docker', name: 'IMAGE_NAME', trim: true
+                                    string defaultValue: 'getmarcapi', description: 'Name used for the image by Docker', name: 'IMAGE_NAME', trim: true
                                 }
                             }
                             stages{
-                                stage("Deploy to Private Docker Registry"){
+                                stage('Deploy to Private Docker Registry'){
                                     agent{
-                                        label "linux && docker && x86 && devpi-access"
+                                        label 'linux && docker && x86 && devpi-access'
                                     }
                                     steps{
                                         script{
                                             withCredentials([string(credentialsId: 'ALMA_API_KEY', variable: 'API_KEY')]) {
                                                 writeFile(
                                                     file: 'api.cfg',
-                                                    text: """[ALMA_API]
+                                                    text: '''[ALMA_API]
                                                              API_DOMAIN=https://api-na.hosted.exlibrisgroup.com
                                                              API_KEY=${API_KEY}
-                                                             """
+                                                             '''
                                                     )
                                             }
                                             configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
                                                 def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
-                                                def build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(" ")
+                                                def build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(' ')
                                                 docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
                                                     def dockerImage = docker.build("${IMAGE_NAME}:${DOCKER_TAG}", "${build_args} .")
                                                     dockerImage.push()
-                                                    dockerImage.push("latest")
+                                                    dockerImage.push('latest')
                                                 }
                                             }
                                         }
                                     }
                                 }
-                                stage("Deploy to Production server"){
+
+                                stage('Deploy to Production server'){
                                     agent{
-                                        label "linux && docker && devpi-access"
+                                        label 'linux && docker && devpi-access'
                                     }
                                     input {
                                         message 'Deploy to live server?'
                                         parameters {
-                                            string defaultValue: "getmarc2", description: 'Name of Docker container to use', name: 'CONTAINER_NAME', trim: true
+                                            string defaultValue: 'getmarc2', description: 'Name of Docker container to use', name: 'CONTAINER_NAME', trim: true
                                             booleanParam defaultValue: true, description: 'Remove any containers with the same name first', name: 'REMOVE_EXISTING_CONTAINER'
                                         }
                                     }
@@ -1002,7 +895,7 @@ pipeline {
                                         script{
                                             configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
                                                 def CONFIG = readJSON(file: CONFIG_FILE).deploy
-                                                docker.withServer(CONFIG.docker.server.apiUrl, "DOCKER_TYKO"){
+                                                docker.withServer(CONFIG.docker.server.apiUrl, 'DOCKER_TYKO'){
                                                     if(REMOVE_EXISTING_CONTAINER == true){
                                                         sh(
                                                            label:"Stopping ${CONTAINER_NAME} if exists",
@@ -1012,7 +905,7 @@ pipeline {
                                                     }
                                                     docker.withRegistry(CONFIG.docker.server.registry, 'jenkins-nexus'){
                                                         def imageName =  CONFIG.docker.server.registry.replace('http://', '') + "/${IMAGE_NAME}:${DOCKER_TAG}"
-                                                        def containerPortsArg = CONFIG.docker.container.ports.collect{"-p ${it}"}.join(" ")
+                                                        def containerPortsArg = CONFIG.docker.container.ports.collect{"-p ${it}"}.join(' ')
                                                         docker.image(imageName).run("${containerPortsArg} --name ${CONTAINER_NAME} --rm")
                                                     }
                                                 }
