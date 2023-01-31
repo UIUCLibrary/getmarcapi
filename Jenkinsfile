@@ -1,9 +1,21 @@
 SUPPORTED_LINUX_VERSIONS = ['3.7', '3.8', '3.9', '3.10', '3.11']
-DEVPI_CONFIG = [
-    index: getDevPiStagingIndex(),
-    server: 'https://devpi.library.illinois.edu',
-    credentialsId: 'DS_devpi',
-]
+
+def getDevpiConfig() {
+    node(){
+        configFileProvider([configFile(fileId: 'devpi_config', variable: 'CONFIG_FILE')]) {
+            def configProperties = readProperties(file: CONFIG_FILE)
+            configProperties.stagingIndex = {
+                if (env.TAG_NAME?.trim()){
+                    return 'tag_staging'
+                } else{
+                    return "${env.BRANCH_NAME}_staging"
+                }
+            }()
+            return configProperties
+        }
+    }
+}
+def DEVPI_CONFIG = getDevpiConfig()
 
 def getDevPiStagingIndex(){
 
@@ -872,7 +884,7 @@ pipeline {
                                     devpi.upload(
                                             server: DEVPI_CONFIG.server,
                                             credentialsId: DEVPI_CONFIG.credentialsId,
-                                            index: DEVPI_CONFIG.index,
+                                            index: DEVPI_CONFIG.stagingIndex,
                                             clientDir: './devpi'
                                         )
                                 }
@@ -905,7 +917,11 @@ pipeline {
                                                     label: 'linux && docker && x86 && devpi-access'
                                                 ]
                                             ],
-                                            devpi: DEVPI_CONFIG,
+                                             devpi: [
+                                                index: DEVPI_CONFIG.stagingIndex,
+                                                server: DEVPI_CONFIG.server,
+                                                credentialsId: DEVPI_CONFIG.credentialsId,
+                                            ],
                                             package:[
                                                 name: props.Name,
                                                 version: props.Version,
@@ -925,7 +941,11 @@ pipeline {
                                                     label: 'linux && docker && x86 && devpi-access'
                                                 ]
                                             ],
-                                            devpi: DEVPI_CONFIG,
+                                             devpi: [
+                                                index: DEVPI_CONFIG.stagingIndex,
+                                                server: DEVPI_CONFIG.server,
+                                                credentialsId: DEVPI_CONFIG.credentialsId,
+                                            ],
                                             package:[
                                                 name: props.Name,
                                                 version: props.Version,
@@ -969,7 +989,7 @@ pipeline {
                                     pkgName: props.Name,
                                     pkgVersion: props.Version,
                                     server: DEVPI_CONFIG.server,
-                                    indexSource: DEVPI_CONFIG.index,
+                                    indexSource: DEVPI_CONFIG.stagingIndex,
                                     indexDestination: 'production/release',
                                     credentialsId: DEVPI_CONFIG.credentialsId
                                 )
@@ -988,7 +1008,7 @@ pipeline {
                                             pkgName: props.Name,
                                             pkgVersion: props.Version,
                                             server: DEVPI_CONFIG.server,
-                                            indexSource: DEVPI_CONFIG.index,
+                                            indexSource: DEVPI_CONFIG.stagingIndex,
                                             indexDestination: "DS_Jenkins/${env.BRANCH_NAME}",
                                             credentialsId: DEVPI_CONFIG.credentialsId
                                         )
@@ -1004,7 +1024,7 @@ pipeline {
                                     devpi.removePackage(
                                         pkgName: props.Name,
                                         pkgVersion: props.Version,
-                                        index: DEVPI_CONFIG.index,
+                                        index: DEVPI_CONFIG.stagingIndex,
                                         server: DEVPI_CONFIG.server,
                                         credentialsId: DEVPI_CONFIG.credentialsId,
 
