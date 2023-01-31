@@ -17,6 +17,15 @@ def getDevpiConfig() {
 }
 def DEVPI_CONFIG = getDevpiConfig()
 
+def getPypiConfig() {
+    node(){
+        configFileProvider([configFile(fileId: 'pypi_config', variable: 'CONFIG_FILE')]) {
+            def config = readJSON( file: CONFIG_FILE)
+            return config['deployment']['indexes']
+        }
+    }
+}
+
 def getDevPiStagingIndex(){
 
     if (env.TAG_NAME?.trim()){
@@ -228,6 +237,7 @@ pipeline {
         booleanParam(name: 'INCLUDE_ARM_LINUX', defaultValue: false, description: 'Include ARM architecture for Linux')
         booleanParam(name: 'DEPLOY_DEVPI', defaultValue: false, description: "Deploy to devpi on http://devpi.library.illinois.edu/DS_Jenkins/${env.BRANCH_NAME}")
         booleanParam(name: 'DEPLOY_DEVPI_PRODUCTION', defaultValue: false, description: 'Deploy to production devpi on https://devpi.library.illinois.edu/production/release. Master branch Only')
+        booleanParam(name: 'DEPLOY_PYPI', defaultValue: false, description: 'Deploy to pypi')
         booleanParam(name: 'DEPLOY_DOCS', defaultValue: false, description: '')
         booleanParam(name: 'DEPLOY_TO_PRODUCTION', defaultValue: false, description: 'Deploy to Production Server')
     }
@@ -579,449 +589,328 @@ pipeline {
         }
         stage('Deployment'){
             stages{
-                //   stage('Deploy to Devpi'){
-                //       when {
-                //           allOf{
-                //               equals expected: true, actual: params.DEPLOY_DEVPI
-                //               anyOf {
-                //                   equals expected: 'master', actual: env.BRANCH_NAME
-                //                   equals expected: 'dev', actual: env.BRANCH_NAME
-                //                   tag '*'
-                //               }
-                //           }
-                //           beforeAgent true
-                //           beforeOptions true
-                //       }
-                //       agent none
-                //       environment{
-                //           DEVPI = credentials('DS_devpi')
-                //           devpiStagingIndex = getDevPiStagingIndex()
-                //       }
-                //       options{
-                //           lock('getmarcapi-devpi')
-                //       }
-                //       stages{
-                //           stage('Deploy to Devpi Staging') {
-                //               agent{
-                //                   dockerfile {
-                //                       filename DEFAULT_DOCKER_AGENT_FILENAME
-                //                       label 'linux && docker && x86 && devpi-access'
-                //                       additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
-                //                   }
-                //               }
-                //               steps {
-                //                   unstash 'PYTHON_PACKAGES'
-                //                   unstash 'DOCS_ARCHIVE'
-                //                   sh(
-                //                       label: 'Uploading to DevPi Staging',
-                //                       script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
-                //                                  devpi login $DEVPI_USR --password $DEVPI_PSW --clientdir ./devpi
-                //                                  devpi use /${env.DEVPI_USR}/${env.devpiStagingIndex} --clientdir ./devpi
-                //                                  devpi upload --from-dir dist --clientdir ./devpi"""
-                //                   )
-                //               }
-                //           }
-                //           stage('Test DevPi Package') {
-                //               matrix {
-                //                   axes {
-                //                       axis {
-                //                           name 'PYTHON_VERSION'
-                //                           values '3.7', '3.8'
-                //                       }
-                //                   }
-                //                   agent none
-                //                   stages{
-                //                       stage('Testing DevPi wheel Package'){
-                //                           agent {
-                //                               dockerfile {
-                //                                   filename DEFAULT_DOCKER_AGENT_FILENAME
-                //                                   label 'linux && docker && x86 && devpi-access'
-                //                                   additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL"
-                //                               }
-                //                           }
-                //                           options {
-                //                               warnError('Package Testing Failed')
-                //                           }
-                //                           steps{
-                //                               timeout(10){
-                //                                   unstash 'DIST-INFO'
-                //                                   devpiRunTest(
-                //                                       'getmarcapi.dist-info/METADATA',
-                //                                       env.devpiStagingIndex,
-                //                                       'whl',
-                //                                       DEVPI_USR,
-                //                                       DEVPI_PSW,
-                //                                       "py${PYTHON_VERSION.replace('.', '')}"
-                //                                       )
-                //                               }
-                //                           }
-                //                       }
-                //                       stage('Testing DevPi sdist Package'){
-                //                           agent {
-                //                               dockerfile {
-                //                                   filename DEFAULT_DOCKER_AGENT_FILENAME
-                //                                   label 'linux && docker && x86 && devpi-access'
-                //                                   additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL"
-                //                               }
-                //                           }
-                //                           options {
-                //                               warnError('Package Testing Failed')
-                //                           }
-                //                           steps{
-                //                               timeout(10){
-                //                                   unstash 'DIST-INFO'
-                //                                   devpiRunTest(
-                //                                       'getmarcapi.dist-info/METADATA',
-                //                                       env.devpiStagingIndex,
-                //                                       'tar.gz',
-                //                                       DEVPI_USR,
-                //                                       DEVPI_PSW,
-                //                                       "py${PYTHON_VERSION.replace('.', '')}"
-                //                                       )
-                //                               }
-                //                           }
-                //                       }
-                //                   }
-                //               }
-                //           }
-                //           stage('Deploy to DevPi Production') {
-                //               when {
-                //                   allOf{
-                //                       equals expected: true, actual: params.DEPLOY_DEVPI_PRODUCTION
-                //                       anyOf {
-                //                           branch 'master'
-                //                           tag '*'
-                //                       }
-                //                   }
-                //                   beforeInput true
-                //               }
-                //               options{
-                //                     timeout(time: 1, unit: 'DAYS')
-                //               }
-                //               input {
-                //                 message 'Release to DevPi Production? '
-                //               }
-                //               agent {
-                //                   dockerfile {
-                //                       filename DEFAULT_DOCKER_AGENT_FILENAME
-                //                       label 'linux && docker && x86 && devpi-access'
-                //                       additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
-                //                   }
-                //               }
-                //               steps {
-                //                   script {
-                //                       sh(
-                //                           label: 'Pushing to production/release index',
-                //                           script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
-                //                                      devpi login $DEVPI_USR --password $DEVPI_PSW --clientdir ./devpi
-                //                                      devpi push --index DS_Jenkins/${env.devpiStagingIndex} ${props.Name}==${props.Version} production/release --clientdir ./devpi
-                //                                      """
-                //                       )
-                //                   }
-                //               }
-                //           }
-                //       }
-                //       post{
-                //           success{
-                //               node('linux && docker && devpi-access') {
-                //                  script{
-                //                       if (!env.TAG_NAME?.trim()){
-                //                           docker.build('getmarc:devpi','-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL .').inside{
-                //                               sh(
-                //                                   label: 'Moving DevPi package from staging index to index',
-                //                                   script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
-                //                                              devpi login $DEVPI_USR --password $DEVPI_PSW --clientdir ./devpi
-                //                                              devpi use /DS_Jenkins/${env.devpiStagingIndex} --clientdir ./devpi
-                //                                              devpi push ${props.Name}==${props.Version} DS_Jenkins/${env.BRANCH_NAME} --clientdir ./devpi
-                //                                              """
-                //                               )
-                //                           }
-                //                      }
-                //                  }
-                //               }
-                //           }
-                //           cleanup{
-                //               node('linux && docker && devpi-access') {
-                //                  script{
-                //                       docker.build('getmarc:devpi','-f ./ci/docker/python/linux/Dockerfile --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL .').inside{
-                //                           sh(
-                //                               label: 'Removing Package from DevPi staging index',
-                //                               script: """devpi use https://devpi.library.illinois.edu --clientdir ./devpi
-                //                                          devpi login $DEVPI_USR --password $DEVPI_PSW --clientdir ./devpi
-                //                                          devpi use /DS_Jenkins/${env.devpiStagingIndex} --clientdir ./devpi
-                //                                          devpi remove -y ${props.Name}==${props.Version} --clientdir ./devpi
-                //                                          """
-                //                              )
-                //                       }
-                //                  }
-                //               }
-                //           }
-                //       }
-                //   }
-            stage('Deploy to Devpi'){
-                when {
-                    allOf{
-                        anyOf{
-                            equals expected: true, actual: params.DEPLOY_DEVPI
-                        }
-                        anyOf {
-                            equals expected: 'master', actual: env.BRANCH_NAME
-                            equals expected: 'dev', actual: env.BRANCH_NAME
-                            tag '*'
-                        }
-                    }
-                    beforeAgent true
-                    beforeOptions true
-                }
-                agent none
-                options{
-                    lock('pyhathiprep-devpi')
-                }
-                stages{
-                    stage('Uploading to DevPi Staging'){
-                        agent {
-                            dockerfile {
-                                filename 'ci/docker/python/tox/Dockerfile'
-                                label 'linux && docker && devpi-access'
-                                additionalBuildArgs '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
+                stage('Deploy to Devpi'){
+                    when {
+                        allOf{
+                            anyOf{
+                                equals expected: true, actual: params.DEPLOY_DEVPI
+                            }
+                            anyOf {
+                                equals expected: 'master', actual: env.BRANCH_NAME
+                                equals expected: 'dev', actual: env.BRANCH_NAME
+                                tag '*'
                             }
                         }
-                        steps {
-                            timeout(5){
-                                unstash 'PYTHON_PACKAGES'
-                                script{
-                                    devpi.upload(
-                                            server: DEVPI_CONFIG.server,
-                                            credentialsId: DEVPI_CONFIG.credentialsId,
-                                            index: DEVPI_CONFIG.stagingIndex,
-                                            clientDir: './devpi'
-                                        )
+                        beforeAgent true
+                        beforeOptions true
+                    }
+                    agent none
+                    options{
+                        lock('pyhathiprep-devpi')
+                    }
+                    stages{
+                        stage('Uploading to DevPi Staging'){
+                            agent {
+                                dockerfile {
+                                    filename 'ci/docker/python/tox/Dockerfile'
+                                    label 'linux && docker && devpi-access'
+                                    additionalBuildArgs '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
                                 }
                             }
-                        }
-                        post{
-                            cleanup{
-                                cleanWs(
-                                    deleteDirs: true,
-                                    patterns: [
-                                        [pattern: 'dist/', type: 'INCLUDE'],
-                                        [pattern: '*.dist-info/', type: 'INCLUDE'],
-                                        [pattern: 'build/', type: 'INCLUDE']
-                                    ]
-                                )
-                            }
-                        }
-                    }
-                    stage('Test DevPi packages') {
-                        steps{
-                            script{
-                                def linuxPackages = [:]
-                                SUPPORTED_LINUX_VERSIONS.each{pythonVersion ->
-                                    linuxPackages["Test Python ${pythonVersion}: sdist Linux"] = {
-                                        devpi.testDevpiPackage(
-                                            agent: [
-                                                dockerfile: [
-                                                    filename: 'ci/docker/python/tox/Dockerfile',
-                                                    additionalBuildArgs: '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL',
-                                                    label: 'linux && docker && x86 && devpi-access'
-                                                ]
-                                            ],
-                                             devpi: [
-                                                index: DEVPI_CONFIG.stagingIndex,
+                            steps {
+                                timeout(5){
+                                    unstash 'PYTHON_PACKAGES'
+                                    script{
+                                        devpi.upload(
                                                 server: DEVPI_CONFIG.server,
                                                 credentialsId: DEVPI_CONFIG.credentialsId,
-                                            ],
-                                            package:[
-                                                name: props.Name,
-                                                version: props.Version,
-                                                selector: 'tar.gz'
-                                            ],
-                                            test:[
-                                                toxEnv: "py${pythonVersion}".replace('.',''),
-                                            ]
-                                        )
-                                    }
-                                    linuxPackages["Test Python ${pythonVersion}: wheel Linux"] = {
-                                        devpi.testDevpiPackage(
-                                            agent: [
-                                                dockerfile: [
-                                                    filename: 'ci/docker/python/tox/Dockerfile',
-                                                    additionalBuildArgs: '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL',
-                                                    label: 'linux && docker && x86 && devpi-access'
-                                                ]
-                                            ],
-                                             devpi: [
                                                 index: DEVPI_CONFIG.stagingIndex,
-                                                server: DEVPI_CONFIG.server,
-                                                credentialsId: DEVPI_CONFIG.credentialsId,
-                                            ],
-                                            package:[
-                                                name: props.Name,
-                                                version: props.Version,
-                                                selector: 'whl'
-                                            ],
-                                            test:[
-                                                toxEnv: "py${pythonVersion}".replace('.',''),
-                                            ]
-                                        )
-                                    }
-                                }
-                                parallel(linuxPackages)
-                            }
-                        }
-                    }
-                    stage('Deploy to DevPi Production') {
-                        when {
-                            allOf{
-                                equals expected: true, actual: params.DEPLOY_DEVPI_PRODUCTION
-                                anyOf {
-                                    equals expected: 'master', actual: env.BRANCH_NAME
-                                    tag '*'
-                                }
-                            }
-                            beforeAgent true
-                            beforeInput true
-                        }
-                        agent {
-                            dockerfile {
-                                filename 'ci/docker/python/tox/Dockerfile'
-                                label 'linux && docker && devpi-access'
-                                additionalBuildArgs '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
-                              }
-                        }
-                        input {
-                            message 'Release to DevPi Production?'
-                        }
-                        steps {
-                            script{
-                                devpi.pushPackageToIndex(
-                                    pkgName: props.Name,
-                                    pkgVersion: props.Version,
-                                    server: DEVPI_CONFIG.server,
-                                    indexSource: DEVPI_CONFIG.stagingIndex,
-                                    indexDestination: 'production/release',
-                                    credentialsId: DEVPI_CONFIG.credentialsId
-                                )
-                            }
-                        }
-                    }
-                }
-                post{
-                    success{
-                        node('linux && docker && devpi-access') {
-                            checkout scm
-                            script{
-                                if (!env.TAG_NAME?.trim()){
-                                    docker.build('pyhathiprep:devpi','-f ./ci/docker/python/tox/Dockerfile --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL .').inside{
-                                        devpi.pushPackageToIndex(
-                                            pkgName: props.Name,
-                                            pkgVersion: props.Version,
-                                            server: DEVPI_CONFIG.server,
-                                            indexSource: DEVPI_CONFIG.stagingIndex,
-                                            indexDestination: "DS_Jenkins/${env.BRANCH_NAME}",
-                                            credentialsId: DEVPI_CONFIG.credentialsId
-                                        )
+                                                clientDir: './devpi'
+                                            )
                                     }
                                 }
                             }
-                        }
-                    }
-                    cleanup{
-                        node('linux && docker && x86 && devpi-access') {
-                           script{
-                                docker.build('pyhathiprep:devpi','-f ./ci/docker/python/tox/Dockerfile --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL .').inside{
-                                    devpi.removePackage(
-                                        pkgName: props.Name,
-                                        pkgVersion: props.Version,
-                                        index: DEVPI_CONFIG.stagingIndex,
-                                        server: DEVPI_CONFIG.server,
-                                        credentialsId: DEVPI_CONFIG.credentialsId,
-
+                            post{
+                                cleanup{
+                                    cleanWs(
+                                        deleteDirs: true,
+                                        patterns: [
+                                            [pattern: 'dist/', type: 'INCLUDE'],
+                                            [pattern: '*.dist-info/', type: 'INCLUDE'],
+                                            [pattern: 'build/', type: 'INCLUDE']
+                                        ]
                                     )
                                 }
-                           }
+                            }
+                        }
+                        stage('Test DevPi packages') {
+                            steps{
+                                script{
+                                    def linuxPackages = [:]
+                                    SUPPORTED_LINUX_VERSIONS.each{pythonVersion ->
+                                        linuxPackages["Test Python ${pythonVersion}: sdist Linux"] = {
+                                            devpi.testDevpiPackage(
+                                                agent: [
+                                                    dockerfile: [
+                                                        filename: 'ci/docker/python/tox/Dockerfile',
+                                                        additionalBuildArgs: '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL',
+                                                        label: 'linux && docker && x86 && devpi-access'
+                                                    ]
+                                                ],
+                                                 devpi: [
+                                                    index: DEVPI_CONFIG.stagingIndex,
+                                                    server: DEVPI_CONFIG.server,
+                                                    credentialsId: DEVPI_CONFIG.credentialsId,
+                                                ],
+                                                package:[
+                                                    name: props.Name,
+                                                    version: props.Version,
+                                                    selector: 'tar.gz'
+                                                ],
+                                                test:[
+                                                    toxEnv: "py${pythonVersion}".replace('.',''),
+                                                ]
+                                            )
+                                        }
+                                        linuxPackages["Test Python ${pythonVersion}: wheel Linux"] = {
+                                            devpi.testDevpiPackage(
+                                                agent: [
+                                                    dockerfile: [
+                                                        filename: 'ci/docker/python/tox/Dockerfile',
+                                                        additionalBuildArgs: '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL',
+                                                        label: 'linux && docker && x86 && devpi-access'
+                                                    ]
+                                                ],
+                                                 devpi: [
+                                                    index: DEVPI_CONFIG.stagingIndex,
+                                                    server: DEVPI_CONFIG.server,
+                                                    credentialsId: DEVPI_CONFIG.credentialsId,
+                                                ],
+                                                package:[
+                                                    name: props.Name,
+                                                    version: props.Version,
+                                                    selector: 'whl'
+                                                ],
+                                                test:[
+                                                    toxEnv: "py${pythonVersion}".replace('.',''),
+                                                ]
+                                            )
+                                        }
+                                    }
+                                    parallel(linuxPackages)
+                                }
+                            }
+                        }
+                        stage('Deploy to DevPi Production') {
+                            when {
+                                allOf{
+                                    equals expected: true, actual: params.DEPLOY_DEVPI_PRODUCTION
+                                    anyOf {
+                                        equals expected: 'master', actual: env.BRANCH_NAME
+                                        tag '*'
+                                    }
+                                }
+                                beforeAgent true
+                                beforeInput true
+                            }
+                            agent {
+                                dockerfile {
+                                    filename 'ci/docker/python/tox/Dockerfile'
+                                    label 'linux && docker && devpi-access'
+                                    additionalBuildArgs '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
+                                  }
+                            }
+                            input {
+                                message 'Release to DevPi Production?'
+                            }
+                            steps {
+                                script{
+                                    devpi.pushPackageToIndex(
+                                        pkgName: props.Name,
+                                        pkgVersion: props.Version,
+                                        server: DEVPI_CONFIG.server,
+                                        indexSource: DEVPI_CONFIG.stagingIndex,
+                                        indexDestination: 'production/release',
+                                        credentialsId: DEVPI_CONFIG.credentialsId
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    post{
+                        success{
+                            node('linux && docker && devpi-access') {
+                                checkout scm
+                                script{
+                                    if (!env.TAG_NAME?.trim()){
+                                        docker.build('pyhathiprep:devpi','-f ./ci/docker/python/tox/Dockerfile --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL .').inside{
+                                            devpi.pushPackageToIndex(
+                                                pkgName: props.Name,
+                                                pkgVersion: props.Version,
+                                                server: DEVPI_CONFIG.server,
+                                                indexSource: DEVPI_CONFIG.stagingIndex,
+                                                indexDestination: "DS_Jenkins/${env.BRANCH_NAME}",
+                                                credentialsId: DEVPI_CONFIG.credentialsId
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        cleanup{
+                            node('linux && docker && x86 && devpi-access') {
+                               script{
+                                    docker.build('pyhathiprep:devpi','-f ./ci/docker/python/tox/Dockerfile --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL .').inside{
+                                        devpi.removePackage(
+                                            pkgName: props.Name,
+                                            pkgVersion: props.Version,
+                                            index: DEVPI_CONFIG.stagingIndex,
+                                            server: DEVPI_CONFIG.server,
+                                            credentialsId: DEVPI_CONFIG.credentialsId,
+
+                                        )
+                                    }
+                               }
+                            }
                         }
                     }
                 }
-            }
-            stage('Additional Deploy') {
-                parallel{
-                    stage('Deploy Docker'){
-                        when{
-                            equals expected: true, actual: params.DEPLOY_TO_PRODUCTION
-                            beforeAgent true
-                            beforeInput true
-                        }
-                        input {
-                            message 'Deploy to to server'
-                            parameters {
-                                string defaultValue: props.Version, description: 'Tag associated with the docker image', name: 'DOCKER_TAG', trim: true
-                                string defaultValue: 'getmarcapi', description: 'Name used for the image by Docker', name: 'IMAGE_NAME', trim: true
-                            }
-                        }
-                        stages{
-                            stage('Deploy to Private Docker Registry'){
-                                agent{
-                                    label 'linux && docker && x86 && devpi-access'
-                                }
-                                steps{
-                                    script{
-                                        withCredentials([string(credentialsId: 'ALMA_API_KEY', variable: 'API_KEY')]) {
-                                            writeFile(
-                                                file: 'api.cfg',
-                                                text: '''[ALMA_API]
-                                                         API_DOMAIN=https://api-na.hosted.exlibrisgroup.com
-                                                         API_KEY=${API_KEY}
-                                                         '''
-                                                )
-                                        }
-                                        configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
-                                            def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
-                                            def build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(' ')
-                                            docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
-                                                def dockerImage = docker.build("${IMAGE_NAME}:${DOCKER_TAG}", "${build_args} .")
-                                                dockerImage.push()
-                                                dockerImage.push('latest')
-                                            }
-                                        }
-                                    }
+                stage('Additional Deploy') {
+                    parallel{
+                        stage('Deploy to pypi') {
+                            agent {
+                                dockerfile {
+                                    filename DEFAULT_DOCKER_AGENT_FILENAME
+                                    label DEFAULT_DOCKER_AGENT_LABELS
+                                    additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                                 }
                             }
-                            stage('Deploy to Production server'){
-                                agent{
-                                    label 'linux && docker && devpi-access'
+                            when{
+                                allOf{
+                                    equals expected: true, actual: params.DEPLOY_PYPI
+                                    equals expected: true, actual: params.BUILD_PACKAGES
                                 }
-                                input {
-                                    message 'Deploy to live server?'
-                                    parameters {
-                                        string defaultValue: 'getmarc2', description: 'Name of Docker container to use', name: 'CONTAINER_NAME', trim: true
-                                        booleanParam defaultValue: true, description: 'Remove any containers with the same name first', name: 'REMOVE_EXISTING_CONTAINER'
+                                beforeAgent true
+                                beforeInput true
+                            }
+                            options{
+                                retry(3)
+                            }
+                            input {
+                                message 'Upload to pypi server?'
+                                parameters {
+                                    choice(
+                                        choices: getPypiConfig(),
+                                        description: 'Url to the pypi index to upload python packages.',
+                                        name: 'SERVER_URL'
+                                    )
+                                }
+                            }
+                            steps{
+                                unstash 'PYTHON_PACKAGES'
+                                script{
+                                    def pypi = fileLoader.fromGit(
+                                            'pypi',
+                                            'https://github.com/UIUCLibrary/jenkins_helper_scripts.git',
+                                            '2',
+                                            null,
+                                            ''
+                                        )
+                                    pypi.pypiUpload(
+                                        credentialsId: 'jenkins-nexus',
+                                        repositoryUrl: SERVER_URL,
+                                        glob: 'dist/*'
+                                        )
+                                }
+                            }
+                            post{
+                                cleanup{
+                                    cleanWs(
+                                        deleteDirs: true,
+                                        patterns: [
+                                                [pattern: 'dist/', type: 'INCLUDE']
+                                            ]
+                                    )
+                                }
+                            }
+                        }
+                        stage('Deploy Docker'){
+                            when{
+                                equals expected: true, actual: params.DEPLOY_TO_PRODUCTION
+                                beforeAgent true
+                                beforeInput true
+                            }
+                            input {
+                                message 'Deploy to to server'
+                                parameters {
+                                    string defaultValue: props.Version, description: 'Tag associated with the docker image', name: 'DOCKER_TAG', trim: true
+                                    string defaultValue: 'getmarcapi', description: 'Name used for the image by Docker', name: 'IMAGE_NAME', trim: true
+                                }
+                            }
+                            stages{
+                                stage('Deploy to Private Docker Registry'){
+                                    agent{
+                                        label 'linux && docker && x86 && devpi-access'
                                     }
-                                }
-                                options{
-                                    timeout(time: 1, unit: 'DAYS')
-                                    retry(3)
-                                }
-                                steps{
-                                    script{
-                                        configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
-                                            def CONFIG = readJSON(file: CONFIG_FILE).deploy
-                                            docker.withServer(CONFIG.docker.server.apiUrl, 'DOCKER_TYKO'){
-                                                if(REMOVE_EXISTING_CONTAINER == true){
-                                                    sh(
-                                                       label:"Stopping ${CONTAINER_NAME} if exists",
-                                                       script: "docker stop ${CONTAINER_NAME}",
-                                                       returnStatus: true
+                                    steps{
+                                        script{
+                                            withCredentials([string(credentialsId: 'ALMA_API_KEY', variable: 'API_KEY')]) {
+                                                writeFile(
+                                                    file: 'api.cfg',
+                                                    text: '''[ALMA_API]
+                                                             API_DOMAIN=https://api-na.hosted.exlibrisgroup.com
+                                                             API_KEY=${API_KEY}
+                                                             '''
                                                     )
-                                                }
-                                                docker.withRegistry(CONFIG.docker.server.registry, 'jenkins-nexus'){
-                                                    def imageName =  CONFIG.docker.server.registry.replace('http://', '') + "/${IMAGE_NAME}:${DOCKER_TAG}"
-                                                    def containerPortsArg = CONFIG.docker.container.ports.collect{"-p ${it}"}.join(' ')
-                                                    docker.image(imageName).run("${containerPortsArg} --name ${CONTAINER_NAME} --rm")
+                                            }
+                                            configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
+                                                def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
+                                                def build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(' ')
+                                                docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
+                                                    def dockerImage = docker.build("${IMAGE_NAME}:${DOCKER_TAG}", "${build_args} .")
+                                                    dockerImage.push()
+                                                    dockerImage.push('latest')
                                                 }
                                             }
                                         }
                                     }
+                                }
+
+                                stage('Deploy to Production server'){
+                                    agent{
+                                        label 'linux && docker && devpi-access'
+                                    }
+                                    input {
+                                        message 'Deploy to live server?'
+                                        parameters {
+                                            string defaultValue: 'getmarc2', description: 'Name of Docker container to use', name: 'CONTAINER_NAME', trim: true
+                                            booleanParam defaultValue: true, description: 'Remove any containers with the same name first', name: 'REMOVE_EXISTING_CONTAINER'
+                                        }
+                                    }
+                                    options{
+                                        timeout(time: 1, unit: 'DAYS')
+                                        retry(3)
+                                    }
+                                    steps{
+                                        script{
+                                            configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
+                                                def CONFIG = readJSON(file: CONFIG_FILE).deploy
+                                                docker.withServer(CONFIG.docker.server.apiUrl, 'DOCKER_TYKO'){
+                                                    if(REMOVE_EXISTING_CONTAINER == true){
+                                                        sh(
+                                                           label:"Stopping ${CONTAINER_NAME} if exists",
+                                                           script: "docker stop ${CONTAINER_NAME}",
+                                                           returnStatus: true
+                                                        )
+                                                    }
+                                                    docker.withRegistry(CONFIG.docker.server.registry, 'jenkins-nexus'){
+                                                        def imageName =  CONFIG.docker.server.registry.replace('http://', '') + "/${IMAGE_NAME}:${DOCKER_TAG}"
+                                                        def containerPortsArg = CONFIG.docker.container.ports.collect{"-p ${it}"}.join(' ')
+                                                        docker.image(imageName).run("${containerPortsArg} --name ${CONTAINER_NAME} --rm")
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
