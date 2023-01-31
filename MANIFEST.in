@@ -3,6 +3,7 @@
 
 # README and the files it references
 include README.rst
+include README.md
 
 # Tox configuration setting
 include tox.ini

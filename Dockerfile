@@ -1,20 +1,28 @@
-FROM python:3.8-slim as builder
+FROM python:3.8-slim as base_image
 
+FROM base_image as builder
+RUN apt update -y && apt install -y npm
 RUN python -m pip install pip --upgrade && \
     pip install --upgrade setuptools && \
-    pip install wheel pep517
+    pip install wheel build
 COPY getmarcapi /src/getmarcapi/
-COPY pyproject.toml README.rst setup.cfg setup.py MANIFEST.in  /src/
+COPY src /src/src/
+COPY pyproject.toml README.rst README.md setup.cfg setup.py MANIFEST.in requirements-deploy.txt /src/
 WORKDIR /src
+COPY package.json package-lock.json webpack.config.js ./
+RUN npm install
 
 ARG PIP_INDEX_URL
-RUN pip wheel --wheel-dir=/wheels gunicorn python-dotenv
-RUN pip wheel --wheel-dir=/wheels .
+ARG PIP_EXTRA_INDEX_URL
+COPY requirements/ ./requirements/
+RUN pip wheel --wheel-dir=/wheels -r requirements-deploy.txt
+RUN python -m build --wheel --outdir /wheels
 
-FROM python:3.8-slim
+FROM base_image
 
 COPY --from=builder /wheels/*.whl /wheels/
-RUN pip install --find-links=/wheels --no-index python-dotenv gunicorn
+COPY requirements/ ./requirements/
+RUN pip install --find-links=/wheels --no-index -r requirements/requirements-deploy.txt
 RUN pip install --find-links=/wheels --no-index getmarcapi
 EXPOSE 5000
 WORKDIR /app
