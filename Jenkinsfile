@@ -66,6 +66,100 @@ def loadHelper(file){
     }
 }
 
+def testPackages(){
+    script{
+        def packages
+        node(){
+            checkout scm
+            packages = load 'ci/jenkins/scripts/packaging.groovy'
+        }
+        def linuxTestStages = [:]
+        SUPPORTED_LINUX_VERSIONS.each{ pythonVersion ->
+            def architectures = ['x86']
+            if(params.INCLUDE_ARM_LINUX == true){
+                architectures.add("arm64")
+            }
+            architectures.each{ processorArchitecture ->
+                linuxTestStages["Linux-${processorArchitecture} - Python ${pythonVersion}: wheel"] = {
+                    packages.testPkg2(
+                        agent: [
+                            dockerfile: [
+                                label: "linux && docker && ${processorArchitecture}",
+                                filename: 'ci/docker/python/tox/Dockerfile',
+                                additionalBuildArgs: '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
+                            ]
+                        ],
+                        testSetup: {
+                            checkout scm
+                            unstash 'PYTHON_PACKAGES'
+                        },
+                        testCommand: {
+                            findFiles(glob: 'dist/*.whl').each{
+                                timeout(5){
+                                    sh(
+                                        label: 'Running Tox',
+                                        script: "tox --installpkg ${it.path} --workdir /tmp/tox -e py${pythonVersion.replace('.', '')}"
+                                        )
+                                }
+                            }
+                        },
+                        post:[
+                            cleanup: {
+                                cleanWs(
+                                    patterns: [
+                                            [pattern: 'dist/', type: 'INCLUDE'],
+                                            [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                        ],
+                                    notFailBuild: true,
+                                    deleteDirs: true
+                                )
+                            },
+                            success: {
+                                archiveArtifacts artifacts: 'dist/*.whl'
+                            },
+                        ]
+                    )
+                }
+                linuxTestStages["Linux-${processorArchitecture} - Python ${pythonVersion}: sdist"] = {
+                    packages.testPkg2(
+                        agent: [
+                            dockerfile: [
+                                label: "linux && docker && ${processorArchitecture}",
+                                filename: 'ci/docker/python/tox/Dockerfile',
+                                additionalBuildArgs: '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
+                            ]
+                        ],
+                        testSetup: {
+                            checkout scm
+                            unstash 'PYTHON_PACKAGES'
+                        },
+                        testCommand: {
+                            findFiles(glob: 'dist/*.tar.gz').each{
+                                sh(
+                                    label: 'Running Tox',
+                                    script: "tox --installpkg ${it.path} --workdir /tmp/tox -e py${pythonVersion.replace('.', '')}"
+                                    )
+                            }
+                        },
+                        post:[
+                            cleanup: {
+                                cleanWs(
+                                    patterns: [
+                                            [pattern: 'dist/', type: 'INCLUDE'],
+                                            [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                        ],
+                                    notFailBuild: true,
+                                    deleteDirs: true
+                                )
+                            },
+                        ]
+                    )
+                }
+            }
+        }
+        parallel(linuxTestStages)
+    }
+}
 def startup(){
     stage('Getting Distribution Info'){
         node('linux && docker && x86') {
@@ -118,6 +212,8 @@ pipeline {
         booleanParam(name: 'TEST_RUN_TOX', defaultValue: false, description: 'Run Tox Tests')
         booleanParam(name: 'USE_SONARQUBE', defaultValue: true, description: 'Send data test data to SonarQube')
         booleanParam(name: 'BUILD_PACKAGES', defaultValue: false, description: 'Build Python packages')
+        booleanParam(name: 'TEST_PACKAGES', defaultValue: true, description: 'Test Python packages by installing them and running tests on the installed package')
+        booleanParam(name: 'INCLUDE_ARM_LINUX', defaultValue: false, description: 'Include ARM architecture for Linux')
         booleanParam(name: 'DEPLOY_DEVPI', defaultValue: false, description: "Deploy to devpi on http://devpi.library.illinois.edu/DS_Jenkins/${env.BRANCH_NAME}")
         booleanParam(name: 'DEPLOY_DEVPI_PRODUCTION', defaultValue: false, description: 'Deploy to production devpi on https://devpi.library.illinois.edu/production/release. Master branch Only')
         booleanParam(name: 'DEPLOY_DOCS', defaultValue: false, description: '')
@@ -420,23 +516,33 @@ pipeline {
                 beforeAgent true
             }
             stages{
-                stage('Creating Package') {
+                stage('Packaging sdist and wheel'){
                     agent {
+                        // This needs to be a specific agent/Dockerfile
+                        // container that npm is installed because it is part
+                        // of the build chain
                         dockerfile {
                             filename DEFAULT_DOCKER_AGENT_FILENAME
                             label DEFAULT_DOCKER_AGENT_LABELS
                             additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                         }
                     }
-                    steps {
-                        sh(label: 'Building python distribution packages', script: 'python -m build .')
+                    steps{
+                        timeout(5){
+                            withEnv(['PIP_NO_CACHE_DIR=off']) {
+                                sh(label: 'Building Python Package',
+//                                    script: '''python -m venv venv --upgrade-deps
+                                   script: '''python -m venv venv
+                                              venv/bin/pip install build
+                                              venv/bin/python -m build .
+                                              '''
+                                   )
+                           }
+                        }
                     }
                     post{
                         always{
-                            stash includes: 'dist/*.*', name: 'PYTHON_PACKAGES'
-                        }
-                        success {
-                            archiveArtifacts artifacts: 'dist/*.whl,dist/*.tar.gz,dist/*.zip', fingerprint: true
+                            stash includes: 'dist/*.whl,dist/*.tar.gz,dist/*.zip', name: 'PYTHON_PACKAGES'
                         }
                         cleanup{
                             cleanWs(
@@ -450,96 +556,104 @@ pipeline {
                         }
                     }
                 }
-                stage('Testing all Package') {
-                    matrix{
-                        axes{
-                            axis {
-                                name 'PYTHON_VERSION'
-                                values(
-                                    '3.7',
-                                    '3.8'
-                                )
-                            }
-                        }
-                        agent {
-                            dockerfile {
-                                filename DEFAULT_DOCKER_AGENT_FILENAME
-                                label DEFAULT_DOCKER_AGENT_LABELS
-                                additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL"
-                            }
-                        }
-                        stages{
-                            stage('Testing Package sdist'){
-                                options {
-                                    warnError('Package Testing Failed')
-                                }
-                                steps{
-                                    unstash 'PYTHON_PACKAGES'
-                                    script{
-                                        findFiles(glob: '**/*.tar.gz').each{
-                                            timeout(15){
-                                                sh(
-                                                    script: """python --version
-                                                               tox --installpkg=${it.path} -e py -vv
-                                                               """,
-                                                    label: "Testing ${it}"
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                                post{
-                                    cleanup{
-                                        cleanWs(
-                                            notFailBuild: true,
-                                            deleteDirs: true,
-                                            patterns: [
-                                                [pattern: 'dist/', type: 'INCLUDE'],
-                                                [pattern: 'tests/__pycache__/', type: 'INCLUDE'],
-                                                [pattern: 'build/', type: 'INCLUDE'],
-                                                [pattern: '.tox/', type: 'INCLUDE'],
-                                            ]
-                                        )
-                                    }
-                                }
-                            }
-                            stage('Testing Package Wheel'){
-                                options {
-                                    warnError('Package Testing Failed')
-                                }
-                                steps{
-                                    unstash 'PYTHON_PACKAGES'
-                                    script{
-                                        findFiles(glob: '**/*.whl').each{
-                                            timeout(15){
-                                                sh(
-                                                    script: """python --version
-                                                               tox --installpkg=${it.path} -e py -vv
-                                                               """,
-                                                    label: "Testing ${it}"
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                                post{
-                                    cleanup{
-                                        cleanWs(
-                                            notFailBuild: true,
-                                            deleteDirs: true,
-                                            patterns: [
-                                                [pattern: 'dist/', type: 'INCLUDE'],
-                                                [pattern: 'tests/__pycache__/', type: 'INCLUDE'],
-                                                [pattern: 'build/', type: 'INCLUDE'],
-                                                [pattern: '.tox/', type: 'INCLUDE'],
-                                            ]
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                stage('Testing'){
+                    when{
+                        equals expected: true, actual: params.TEST_PACKAGES
+                    }
+                    steps{
+                        testPackages()
                     }
                 }
+//                 stage('Testing all Package') {
+//                     matrix{
+//                         axes{
+//                             axis {
+//                                 name 'PYTHON_VERSION'
+//                                 values(
+//                                     '3.7',
+//                                     '3.8'
+//                                 )
+//                             }
+//                         }
+//                         agent {
+//                             dockerfile {
+//                                 filename DEFAULT_DOCKER_AGENT_FILENAME
+//                                 label DEFAULT_DOCKER_AGENT_LABELS
+//                                 additionalBuildArgs "--build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL"
+//                             }
+//                         }
+//                         stages{
+//                             stage('Testing Package sdist'){
+//                                 options {
+//                                     warnError('Package Testing Failed')
+//                                 }
+//                                 steps{
+//                                     unstash 'PYTHON_PACKAGES'
+//                                     script{
+//                                         findFiles(glob: '**/*.tar.gz').each{
+//                                             timeout(15){
+//                                                 sh(
+//                                                     script: """python --version
+//                                                                tox --installpkg=${it.path} -e py -vv
+//                                                                """,
+//                                                     label: "Testing ${it}"
+//                                                 )
+//                                             }
+//                                         }
+//                                     }
+//                                 }
+//                                 post{
+//                                     cleanup{
+//                                         cleanWs(
+//                                             notFailBuild: true,
+//                                             deleteDirs: true,
+//                                             patterns: [
+//                                                 [pattern: 'dist/', type: 'INCLUDE'],
+//                                                 [pattern: 'tests/__pycache__/', type: 'INCLUDE'],
+//                                                 [pattern: 'build/', type: 'INCLUDE'],
+//                                                 [pattern: '.tox/', type: 'INCLUDE'],
+//                                             ]
+//                                         )
+//                                     }
+//                                 }
+//                             }
+//                             stage('Testing Package Wheel'){
+//                                 options {
+//                                     warnError('Package Testing Failed')
+//                                 }
+//                                 steps{
+//                                     unstash 'PYTHON_PACKAGES'
+//                                     script{
+//                                         findFiles(glob: '**/*.whl').each{
+//                                             timeout(15){
+//                                                 sh(
+//                                                     script: """python --version
+//                                                                tox --installpkg=${it.path} -e py -vv
+//                                                                """,
+//                                                     label: "Testing ${it}"
+//                                                 )
+//                                             }
+//                                         }
+//                                     }
+//                                 }
+//                                 post{
+//                                     cleanup{
+//                                         cleanWs(
+//                                             notFailBuild: true,
+//                                             deleteDirs: true,
+//                                             patterns: [
+//                                                 [pattern: 'dist/', type: 'INCLUDE'],
+//                                                 [pattern: 'tests/__pycache__/', type: 'INCLUDE'],
+//                                                 [pattern: 'build/', type: 'INCLUDE'],
+//                                                 [pattern: '.tox/', type: 'INCLUDE'],
+//                                             ]
+//                                         )
+//                                     }
+//                                 }
+//                             }
+//                         }
+//                     }
+//                 }
             }
         }
         stage('Deployment'){
