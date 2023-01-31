@@ -124,212 +124,253 @@ pipeline {
         booleanParam(name: "DEPLOY_TO_PRODUCTION", defaultValue: false, description: "Deploy to Production Server")
     }
     stages {
-        stage("Getting Testing Environment Info"){
-            agent {
-                dockerfile {
-                    filename DEFAULT_DOCKER_AGENT_FILENAME
-                    label DEFAULT_DOCKER_AGENT_LABELS
-                    additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
-                }
-            }
-            steps{
-                timeout(5){
-                    sh(
-                        label: "Checking Installed Python Packages",
-                        script: "python -m pip list"
-                    )
-                }
-            }
-        }
-        stage("Checks") {
+        stage('Building and Testing'){
             when{
-                equals expected: true, actual: params.RUN_CHECKS
+                anyOf{
+                    equals expected: true, actual: params.RUN_CHECKS
+                    equals expected: true, actual: params.TEST_RUN_TOX
+                    equals expected: true, actual: params.DEPLOY_DEVPI
+                }
             }
             stages{
-                stage("Code Quality Checks"){
+                stage("Checks") {
+                    when{
+                        equals expected: true, actual: params.RUN_CHECKS
+                    }
+                    agent {
+                        dockerfile {
+                            filename DEFAULT_DOCKER_AGENT_FILENAME
+                            label DEFAULT_DOCKER_AGENT_LABELS
+                            additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+                            args '--mount source=sonar-cache-getmarcapi,target=/home/user/.sonar/cache'
+                        }
+                    }
                     stages{
-                        stage("Run Code Quality Checks"){
-                            agent {
-                                dockerfile {
-                                    filename DEFAULT_DOCKER_AGENT_FILENAME
-                                    label DEFAULT_DOCKER_AGENT_LABELS
-                                    additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
-                                }
-                            }
+                        stage("Code Quality Checks"){
                             stages{
-                                stage("Configuring Testing Environment"){
-                                    steps{
-                                        sh(
-                                            label: "Creating logging and report directories",
-                                            script: """
-                                                mkdir -p logs
-                                                mkdir -p reports/coverage
-                                                mkdir -p reports/doctests
-                                                mkdir -p reports/mypy/html
-                                            """
-                                        )
-                                    }
-                                }
-                                stage("Running Tests"){
-                                    parallel {
-                                        stage("PyTest"){
+                                stage("Run Code Quality Checks"){
+                                    stages{
+                                        stage("Configuring Testing Environment"){
                                             steps{
-                                                sh script: "coverage run --parallel-mode --source getmarcapi -m pytest --junitxml=reports/pytest/junit-pytest.xml ", returnStatus: true
-                                            }
-                                            post {
-                                                always {
-                                                    junit "reports/pytest/junit-pytest.xml"
-                                                    stash includes: "reports/pytest/*.xml", name: 'PYTEST_REPORT'
-                                                }
+                                                sh(
+                                                    label: "Creating logging and report directories",
+                                                    script: """
+                                                        mkdir -p logs
+                                                        mkdir -p reports/coverage
+                                                        mkdir -p reports/doctests
+                                                        mkdir -p reports/mypy/html
+                                                    """
+                                                )
                                             }
                                         }
-                                        stage('Task Scanner'){
-                                            steps{
-                                                recordIssues(tools: [taskScanner(highTags: 'FIXME', includePattern: 'getmarcapi"F/**/*.py', normalTags: 'TODO')])
-                                            }
-                                        }
-
-            //                         stage("Doctest"){
-            //                             steps {
-            //                                 sh "coverage run --parallel-mode --source getmarcapi -m sphinx -b doctest -d build/docs/doctrees docs reports/doctest -w logs/doctest.log"
-            //                             }
-            //                             post{
-            //                                 always {
-            //                                     recordIssues(tools: [sphinxBuild(name: 'Sphinx Doctest', pattern: 'logs/doctest.log', id: 'doctest')])
-            //                                 }
-            //
-            //                             }
-            //                         }
-            //                         stage("Documentation Spell check"){
-            //                             steps {
-            //                                 catchError(buildResult: 'SUCCESS', message: 'Found spelling issues in documentation', stageResult: 'UNSTABLE') {
-            //                                     sh "python -m sphinx docs reports/doc_spellcheck -b spelling -d build/docs/doctrees"
-            //                                 }
-            //                             }
-            //                         }
-                                        stage("pyDocStyle"){
-                                            steps{
-                                                catchError(buildResult: 'SUCCESS', message: 'Did not pass all pyDocStyle tests', stageResult: 'UNSTABLE') {
-                                                    sh(
-                                                        label: "Run pydocstyle",
-                                                        script: '''mkdir -p reports
-                                                                   pydocstyle getmarcapi > reports/pydocstyle-report.txt
-                                                                   '''
-                                                    )
-                                                }
-                                            }
-                                            post {
-                                                always{
-                                                    recordIssues(tools: [pyDocStyle(pattern: 'reports/pydocstyle-report.txt')])
-                                                }
-                                            }
-                                        }
-                                        stage("MyPy") {
-                                            steps{
-                                                catchError(buildResult: 'SUCCESS', message: 'mypy found issues', stageResult: 'UNSTABLE') {
-                                                    // Note: this misses the uiucprescon.getmarc2 namespace package stubs because of this issue https://github.com/python/mypy/issues/10045
-                                                    sh "mypy -p getmarcapi --ignore-missing-imports --html-report reports/mypy/html/ > logs/mypy.log"
-                                                }
-                                            }
-                                            post {
-                                                always {
-                                                    recordIssues(tools: [myPy(name: 'MyPy', pattern: 'logs/mypy.log')])
-                                                    publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'reports/mypy/html/', reportFiles: 'index.html', reportName: 'MyPy HTML Report', reportTitles: ''])
-                                                }
-                                            }
-                                        }
-                                        stage("Bandit") {
-                                            steps{
-                                                catchError(buildResult: 'SUCCESS', message: 'Bandit found issues', stageResult: 'UNSTABLE') {
-                                                    sh(
-                                                        label: "Running bandit",
-                                                        script: "bandit --format json --output reports/bandit-report.json --recursive getmarcapi || bandit -f html --recursive getmarcapi --output reports/bandit-report.html"
-                                                    )
-                                                }
-                                            }
-                                            post {
-                                                unstable{
-                                                    script{
-                                                        if(fileExists('reports/bandit-report.html')){
-                                                            publishHTML([
-                                                                allowMissing: false,
-                                                                alwaysLinkToLastBuild: false,
-                                                                keepAll: false,
-                                                                reportDir: 'reports',
-                                                                reportFiles: 'bandit-report.html',
-                                                                reportName: 'Bandit Report', reportTitles: ''
-                                                                ])
+                                        stage("Running Tests"){
+                                            parallel {
+                                                stage("PyTest"){
+                                                    steps{
+                                                        sh script: "coverage run --parallel-mode --source getmarcapi -m pytest --junitxml=reports/pytest/junit-pytest.xml ", returnStatus: true
+                                                    }
+                                                    post {
+                                                        always {
+                                                            junit "reports/pytest/junit-pytest.xml"
                                                         }
                                                     }
                                                 }
-                                                always {
-                                                    stash includes: "reports/bandit-report.json", name: 'BANDIT_REPORT'
-                                                }
-                                            }
-                                        }
-                                        stage("PyLint") {
-                                            steps{
-                                                catchError(buildResult: 'SUCCESS', message: 'Pylint found issues', stageResult: 'UNSTABLE') {
-                                                    tee("reports/pylint.txt"){
-                                                        sh(
-                                                            script: '''pylint getmarcapi -r n --persistent=n --verbose --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}"
-                                                                       ''',
-                                                            label: "Running pylint"
-                                                        )
+                                                stage('Task Scanner'){
+                                                    steps{
+                                                        recordIssues(tools: [taskScanner(highTags: 'FIXME', includePattern: 'getmarcapi"F/**/*.py', normalTags: 'TODO')])
                                                     }
                                                 }
-                                                sh(
-                                                    script: 'pylint getmarcapi  -r n --persistent=n --msg-template="{path}:{module}:{line}: [{msg_id}({symbol}), {obj}] {msg}" > reports/pylint_issues.txt',
-                                                    label: "Running pylint for sonarqube",
-                                                    returnStatus: true
-                                                )
+
+                    //                         stage("Doctest"){
+                    //                             steps {
+                    //                                 sh "coverage run --parallel-mode --source getmarcapi -m sphinx -b doctest -d build/docs/doctrees docs reports/doctest -w logs/doctest.log"
+                    //                             }
+                    //                             post{
+                    //                                 always {
+                    //                                     recordIssues(tools: [sphinxBuild(name: 'Sphinx Doctest', pattern: 'logs/doctest.log', id: 'doctest')])
+                    //                                 }
+                    //
+                    //                             }
+                    //                         }
+                    //                         stage("Documentation Spell check"){
+                    //                             steps {
+                    //                                 catchError(buildResult: 'SUCCESS', message: 'Found spelling issues in documentation', stageResult: 'UNSTABLE') {
+                    //                                     sh "python -m sphinx docs reports/doc_spellcheck -b spelling -d build/docs/doctrees"
+                    //                                 }
+                    //                             }
+                    //                         }
+                                                stage("pyDocStyle"){
+                                                    steps{
+                                                        catchError(buildResult: 'SUCCESS', message: 'Did not pass all pyDocStyle tests', stageResult: 'UNSTABLE') {
+                                                            sh(
+                                                                label: "Run pydocstyle",
+                                                                script: '''mkdir -p reports
+                                                                           pydocstyle getmarcapi > reports/pydocstyle-report.txt
+                                                                           '''
+                                                            )
+                                                        }
+                                                    }
+                                                    post {
+                                                        always{
+                                                            recordIssues(tools: [pyDocStyle(pattern: 'reports/pydocstyle-report.txt')])
+                                                        }
+                                                    }
+                                                }
+                                                stage("MyPy") {
+                                                    steps{
+                                                        catchError(buildResult: 'SUCCESS', message: 'mypy found issues', stageResult: 'UNSTABLE') {
+                                                            // Note: this misses the uiucprescon.getmarc2 namespace package stubs because of this issue https://github.com/python/mypy/issues/10045
+                                                            sh "mypy -p getmarcapi --ignore-missing-imports --html-report reports/mypy/html/ > logs/mypy.log"
+                                                        }
+                                                    }
+                                                    post {
+                                                        always {
+                                                            recordIssues(tools: [myPy(name: 'MyPy', pattern: 'logs/mypy.log')])
+                                                            publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'reports/mypy/html/', reportFiles: 'index.html', reportName: 'MyPy HTML Report', reportTitles: ''])
+                                                        }
+                                                    }
+                                                }
+                                                stage("Bandit") {
+                                                    steps{
+                                                        catchError(buildResult: 'SUCCESS', message: 'Bandit found issues', stageResult: 'UNSTABLE') {
+                                                            sh(
+                                                                label: "Running bandit",
+                                                                script: "bandit --format json --output reports/bandit-report.json --recursive getmarcapi || bandit -f html --recursive getmarcapi --output reports/bandit-report.html"
+                                                            )
+                                                        }
+                                                    }
+                                                    post {
+                                                        unstable{
+                                                            script{
+                                                                if(fileExists('reports/bandit-report.html')){
+                                                                    publishHTML([
+                                                                        allowMissing: false,
+                                                                        alwaysLinkToLastBuild: false,
+                                                                        keepAll: false,
+                                                                        reportDir: 'reports',
+                                                                        reportFiles: 'bandit-report.html',
+                                                                        reportName: 'Bandit Report', reportTitles: ''
+                                                                        ])
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                stage("PyLint") {
+                                                    steps{
+                                                        catchError(buildResult: 'SUCCESS', message: 'Pylint found issues', stageResult: 'UNSTABLE') {
+                                                            tee("reports/pylint.txt"){
+                                                                sh(
+                                                                    script: '''pylint getmarcapi -r n --persistent=n --verbose --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}"
+                                                                               ''',
+                                                                    label: "Running pylint"
+                                                                )
+                                                            }
+                                                        }
+                                                        sh(
+                                                            script: 'pylint getmarcapi  -r n --persistent=n --msg-template="{path}:{module}:{line}: [{msg_id}({symbol}), {obj}] {msg}" > reports/pylint_issues.txt',
+                                                            label: "Running pylint for sonarqube",
+                                                            returnStatus: true
+                                                        )
+                                                    }
+                                                    post{
+                                                        always{
+                                                            recordIssues(tools: [pyLint(pattern: 'reports/pylint.txt')])
+                                                        }
+                                                    }
+                                                }
+                                                stage("Flake8") {
+                                                    steps{
+                                                        catchError(buildResult: 'SUCCESS', message: 'Flake8 found issues', stageResult: 'UNSTABLE') {
+                                                            sh(label: "Running Flake8",
+                                                               script: '''mkdir -p logs
+                                                                          flake8 getmarcapi --tee --output-file=logs/flake8.log
+                                                                       '''
+                                                               )
+                                                        }
+                                                    }
+                                                    post {
+                                                        always {
+                                                            recordIssues(tools: [flake8(name: 'Flake8', pattern: 'logs/flake8.log')])
+                                                        }
+                                                    }
+                                                }
                                             }
                                             post{
                                                 always{
-                                                    stash includes: "reports/pylint_issues.txt,reports/pylint.txt", name: 'PYLINT_REPORT'
-                                                    recordIssues(tools: [pyLint(pattern: 'reports/pylint.txt')])
-                                                }
-                                            }
-                                        }
-                                        stage("Flake8") {
-                                            steps{
-                                                catchError(buildResult: 'SUCCESS', message: 'Flake8 found issues', stageResult: 'UNSTABLE') {
-                                                    sh(label: "Running Flake8",
-                                                       script: '''mkdir -p logs
-                                                                  flake8 getmarcapi --tee --output-file=logs/flake8.log
-                                                               '''
-                                                       )
-                                                }
-                                            }
-                                            post {
-                                                always {
-                                                    recordIssues(tools: [flake8(name: 'Flake8', pattern: 'logs/flake8.log')])
-                                                    stash includes: "logs/flake8.log", name: 'FLAKE8_REPORT'
+                                                    sh(
+                                                        label: "Combining coverage results",
+                                                        script: '''coverage combine
+                                                                   coverage xml -o reports/coverage.xml
+                                                                   '''
+                                                    )
+                                                    publishCoverage(
+                                                        adapters: [
+                                                            coberturaAdapter('reports/coverage.xml')
+                                                        ],
+                                                        sourceFileResolver: sourceFiles('STORE_ALL_BUILD')
+                                                    )
+
                                                 }
                                             }
                                         }
                                     }
-                                    post{
-                                        always{
-                                            sh(
-                                                label: "Combining coverage results",
-                                                script: '''coverage combine
-                                                           coverage xml -o reports/coverage.xml
-                                                           '''
-                                            )
-                                            stash includes: "reports/coverage.xml", name: 'COVERAGE_REPORT'
-                                            publishCoverage(
-                                                adapters: [
-                                                    coberturaAdapter('reports/coverage.xml')
-                                                ],
-                                                sourceFileResolver: sourceFiles('STORE_ALL_BUILD')
-                                            )
+                                }
+                                stage("Sonarcloud Analysis"){
+                                    options{
+                                        lock("getmarcapi-sonarscanner")
+                                        retry(3)
+                                    }
+                                    when{
+                                        equals expected: true, actual: params.USE_SONARQUBE
+                                        beforeAgent true
+                                        beforeOptions true
+                                    }
+                                    steps{
+                                        script{
 
+                                            withSonarQubeEnv(installationName:"sonarcloud", credentialsId: 'sonarcloud-getmarcapi') {
+                                                if (env.CHANGE_ID){
+                                                    sh(
+                                                        label: "Running Sonar Scanner",
+                                                        script:"sonar-scanner -Dsonar.projectVersion=${props.Version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.CHANGE_TARGET}"
+                                                        )
+                                                } else {
+                                                    sh(
+                                                        label: "Running Sonar Scanner",
+                                                        script: "sonar-scanner -Dsonar.projectVersion=${props.Version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.branch.name=${env.BRANCH_NAME}"
+                                                        )
+                                                }
+                                            }
+                                            milestone label: 'sonarcloud'
+                                            timeout(time: 1, unit: 'HOURS') {
+                                                def sonarqube_result = waitForQualityGate(abortPipeline: false)
+                                                if (sonarqube_result.status != 'OK') {
+                                                    unstable "SonarQube quality gate: ${sonarqube_result.status}"
+                                                }
+                                                def outstandingIssues = get_sonarqube_unresolved_issues(".scannerwork/report-task.txt")
+                                                writeJSON file: 'reports/sonar-report.json', json: outstandingIssues
+                                            }
+                                        }
+                                    }
+                                    post {
+                                        always{
+                                            script{
+                                                if(fileExists('reports/sonar-report.json')){
+                                                    stash includes: "reports/sonar-report.json", name: 'SONAR_REPORT'
+                                                    archiveArtifacts allowEmptyArchive: true, artifacts: 'reports/sonar-report.json'
+                                                    recordIssues(tools: [sonarQube(pattern: 'reports/sonar-report.json')])
+                                                }
+                                            }
                                         }
                                         cleanup{
                                             cleanWs(
                                                 deleteDirs: true,
                                                 patterns: [
+                                                    [pattern: 'reports/', type: 'INCLUDE'],
+                                                    [pattern: 'logs/', type: 'INCLUDE'],
+                                                    [pattern: 'getmarcapi.dist-info/', type: 'INCLUDE'],
+                                                    [pattern: '.scannerwork/', type: 'INCLUDE'],
                                                     [pattern: "dist/", type: 'INCLUDE'],
                                                     [pattern: 'build/', type: 'INCLUDE'],
                                                     [pattern: '.coverage', type: 'INCLUDE'],
@@ -337,113 +378,39 @@ pipeline {
                                                     [pattern: '.pytest_cache/', type: 'INCLUDE'],
                                                     [pattern: '**/__pycache__/', type: 'INCLUDE'],
                                                     [pattern: '.mypy_cache/', type: 'INCLUDE'],
-                                                    [pattern: '.tox/', type: 'INCLUDE'],
                                                     [pattern: 'getmarcapi1.stats', type: 'INCLUDE'],
                                                     [pattern: 'getmarcapi.egg-info/', type: 'INCLUDE'],
                                                     [pattern: 'reports/', type: 'INCLUDE'],
                                                     [pattern: 'logs/', type: 'INCLUDE']
-                                                    ]
+                                                ]
                                             )
                                         }
                                     }
                                 }
                             }
                         }
-                        stage("Sonarcloud Analysis"){
-                            agent {
-                                dockerfile {
-                                    filename DEFAULT_DOCKER_AGENT_FILENAME
-                                    label DEFAULT_DOCKER_AGENT_LABELS
-                                    additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
-                                    args '--mount source=sonar-cache-getmarcapi,target=/home/user/.sonar/cache'
-                                }
-                            }
-                            options{
-                                lock("getmarcapi-sonarscanner")
-                                retry(3)
-                            }
+                        stage("Tox"){
                             when{
-                                equals expected: true, actual: params.USE_SONARQUBE
-                                beforeAgent true
-                                beforeOptions true
+                                equals expected: true, actual: params.TEST_RUN_TOX
                             }
                             steps{
-                                unstash "COVERAGE_REPORT"
-                                unstash "PYTEST_REPORT"
-                                unstash "BANDIT_REPORT"
-                                unstash "PYLINT_REPORT"
-                                unstash "FLAKE8_REPORT"
                                 script{
-
-                                    withSonarQubeEnv(installationName:"sonarcloud", credentialsId: 'sonarcloud-getmarcapi') {
-                                        if (env.CHANGE_ID){
-                                            sh(
-                                                label: "Running Sonar Scanner",
-                                                script:"sonar-scanner -Dsonar.projectVersion=${props.Version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.CHANGE_TARGET}"
-                                                )
-                                        } else {
-                                            sh(
-                                                label: "Running Sonar Scanner",
-                                                script: "sonar-scanner -Dsonar.projectVersion=${props.Version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.branch.name=${env.BRANCH_NAME}"
-                                                )
-                                        }
-                                    }
-                                    milestone label: 'sonarcloud'
-                                    timeout(time: 1, unit: 'HOURS') {
-                                        def sonarqube_result = waitForQualityGate(abortPipeline: false)
-                                        if (sonarqube_result.status != 'OK') {
-                                            unstable "SonarQube quality gate: ${sonarqube_result.status}"
-                                        }
-                                        def outstandingIssues = get_sonarqube_unresolved_issues(".scannerwork/report-task.txt")
-                                        writeJSON file: 'reports/sonar-report.json', json: outstandingIssues
-                                    }
-                                }
-                            }
-                            post {
-                                always{
-                                    script{
-                                        if(fileExists('reports/sonar-report.json')){
-                                            stash includes: "reports/sonar-report.json", name: 'SONAR_REPORT'
-                                            archiveArtifacts allowEmptyArchive: true, artifacts: 'reports/sonar-report.json'
-                                            recordIssues(tools: [sonarQube(pattern: 'reports/sonar-report.json')])
-                                        }
-                                    }
-                                }
-                                cleanup{
-                                    cleanWs(
-                                        deleteDirs: true,
-                                        patterns: [
-                                            [pattern: 'reports/', type: 'INCLUDE'],
-                                            [pattern: 'logs/', type: 'INCLUDE'],
-                                            [pattern: 'getmarcapi.dist-info/', type: 'INCLUDE'],
-                                            [pattern: '.scannerwork/', type: 'INCLUDE'],
-                                        ]
+                                    def tox = fileLoader.fromGit(
+                                        'tox',
+                                        'https://github.com/UIUCLibrary/jenkins_helper_scripts.git',
+                                        '4',
+                                        null,
+                                        ''
                                     )
+                                    def jobs = tox.getToxTestsParallel(
+                                                        envNamePrefix: "Linux",
+                                                        label: DEFAULT_DOCKER_AGENT_LABELS,
+                                                        dockerfile: 'ci/docker/python/tox/Dockerfile',
+                                                        dockerArgs: DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+                                                 )
+                                    parallel(jobs)
                                 }
                             }
-                        }
-                    }
-                }
-                stage("Tox"){
-                    when{
-                        equals expected: true, actual: params.TEST_RUN_TOX
-                    }
-                    steps{
-                        script{
-                            def tox = fileLoader.fromGit(
-                                'tox',
-                                'https://github.com/UIUCLibrary/jenkins_helper_scripts.git',
-                                '4',
-                                null,
-                                ''
-                            )
-                            def jobs = tox.getToxTestsParallel(
-                                                envNamePrefix: "Linux",
-                                                label: DEFAULT_DOCKER_AGENT_LABELS,
-                                                dockerfile: 'ci/docker/python/tox/Dockerfile',
-                                                dockerArgs: DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
-                                         )
-                            parallel(jobs)
                         }
                     }
                 }
