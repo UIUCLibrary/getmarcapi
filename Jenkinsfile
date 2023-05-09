@@ -149,30 +149,41 @@ def testPackages(){
     }
 }
 def startup(){
-    stage('Getting Distribution Info'){
-        node('linux && docker && x86') {
-            ws{
-                checkout scm
-                try{
-                    docker.image('python').inside {
-                        timeout(2){
+    parallel(
+        [
+            failFast: true,
+            'Enable Git Forensics': {
+                node(){
+                    checkout scm
+                    mineRepository()
+                }
+            },
+            'Getting Distribution Info':{
+                node('linux && docker && x86') {
+                    ws{
+                        checkout scm
+                        try{
+                            docker.image('python').inside {
+                                timeout(2){
 
-                            sh(
-                                label: 'Running setup.py with dist_info',
-                                script: '''PIP_NO_CACHE_DIR=off python --version
-                                           PIP_NO_CACHE_DIR=off python setup.py dist_info
-                                        '''
-                            )
-                            stash includes: '*.dist-info/**', name: 'DIST-INFO'
-                            archiveArtifacts artifacts: '*.dist-info/**'
+                                    sh(
+                                        label: 'Running setup.py with dist_info',
+                                        script: '''PIP_NO_CACHE_DIR=off python --version
+                                                   PIP_NO_CACHE_DIR=off python setup.py dist_info
+                                                '''
+                                    )
+                                    stash includes: '*.dist-info/**', name: 'DIST-INFO'
+                                    archiveArtifacts artifacts: '*.dist-info/**'
+                                }
+                            }
+                        } finally{
+                            deleteDir()
                         }
                     }
-                } finally{
-                    deleteDir()
                 }
             }
-        }
-    }
+        ]
+    )
 }
 def get_props(){
     stage('Reading Package Metadata'){
