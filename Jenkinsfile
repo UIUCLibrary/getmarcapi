@@ -43,30 +43,6 @@ node(){
     devpi = load('ci/jenkins/scripts/devpi.groovy')
 }
 
-def devpiRunTest(pkgPropertiesFile, devpiIndex, devpiSelector, devpiUsername, devpiPassword, toxEnv){
-    script{
-        def props = readProperties interpolate: false, file: pkgPropertiesFile
-        if (isUnix()){
-            sh(
-                label: 'Running test',
-                script: """devpi use https://devpi.library.illinois.edu --clientdir certs/
-                           devpi login ${devpiUsername} --password ${devpiPassword} --clientdir certs/
-                           devpi use ${devpiIndex} --clientdir certs/
-                           devpi test --index ${devpiIndex} ${props.Name}==${props.Version} -s ${devpiSelector} --clientdir certs/ -e ${toxEnv} --tox-args=\"-vv\"
-                """
-            )
-        } else {
-            bat(
-                label: 'Running tests on Devpi',
-                script: """devpi use https://devpi.library.illinois.edu --clientdir certs\\
-                           devpi login ${devpiUsername} --password ${devpiPassword} --clientdir certs\\
-                           devpi use ${devpiIndex} --clientdir certs\\
-                           devpi test --index ${devpiIndex} ${props.Name}==${props.Version} -s ${devpiSelector} --clientdir certs\\ -e ${toxEnv} --tox-args=\"-vv\"
-                           """
-            )
-        }
-    }
-}
 def loadHelper(file){
     node(){
         checkout scm
@@ -173,30 +149,41 @@ def testPackages(){
     }
 }
 def startup(){
-    stage('Getting Distribution Info'){
-        node('linux && docker && x86') {
-            ws{
-                checkout scm
-                try{
-                    docker.image('python').inside {
-                        timeout(2){
+    parallel(
+        [
+            failFast: true,
+            'Enable Git Forensics': {
+                node(){
+                    checkout scm
+                    mineRepository()
+                }
+            },
+            'Getting Distribution Info':{
+                node('linux && docker && x86') {
+                    ws{
+                        checkout scm
+                        try{
+                            docker.image('python').inside {
+                                timeout(2){
 
-                            sh(
-                                label: 'Running setup.py with dist_info',
-                                script: '''PIP_NO_CACHE_DIR=off python --version
-                                           PIP_NO_CACHE_DIR=off python setup.py dist_info
-                                        '''
-                            )
-                            stash includes: '*.dist-info/**', name: 'DIST-INFO'
-                            archiveArtifacts artifacts: '*.dist-info/**'
+                                    sh(
+                                        label: 'Running setup.py with dist_info',
+                                        script: '''PIP_NO_CACHE_DIR=off python --version
+                                                   PIP_NO_CACHE_DIR=off python setup.py dist_info
+                                                '''
+                                    )
+                                    stash includes: '*.dist-info/**', name: 'DIST-INFO'
+                                    archiveArtifacts artifacts: '*.dist-info/**'
+                                }
+                            }
+                        } finally{
+                            deleteDir()
                         }
                     }
-                } finally{
-                    deleteDir()
                 }
             }
-        }
-    }
+        ]
+    )
 }
 def get_props(){
     stage('Reading Package Metadata'){
@@ -215,7 +202,7 @@ startup()
 props = get_props()
 DEFAULT_DOCKER_AGENT_FILENAME = 'ci/docker/python/linux/Dockerfile'
 DEFAULT_DOCKER_AGENT_LABELS = 'linux && docker && x86'
-DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
+DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL --build-arg PIP_CACHE_DIR=/.cache/pip'
 
 pipeline {
     agent none
@@ -243,9 +230,6 @@ pipeline {
             }
             stages{
                 stage('Checks') {
-                    when{
-                        equals expected: true, actual: params.RUN_CHECKS
-                    }
                     stages{
                         stage('Code Quality Checks'){
                             agent {
@@ -255,6 +239,10 @@ pipeline {
                                     additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                                     args '--mount source=sonar-cache-getmarcapi,target=/home/user/.sonar/cache'
                                 }
+                            }
+                            when{
+                                equals expected: true, actual: params.RUN_CHECKS
+                                beforeAgent true
                             }
                             stages{
                                 stage('Configuring Testing Environment'){
@@ -501,7 +489,7 @@ pipeline {
                                     def tox = fileLoader.fromGit(
                                         'tox',
                                         'https://github.com/UIUCLibrary/jenkins_helper_scripts.git',
-                                        '4',
+                                        '8',
                                         null,
                                         ''
                                     )
@@ -509,7 +497,9 @@ pipeline {
                                                         envNamePrefix: 'Linux',
                                                         label: DEFAULT_DOCKER_AGENT_LABELS,
                                                         dockerfile: 'ci/docker/python/tox/Dockerfile',
-                                                        dockerArgs: DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+                                                        dockerArgs: DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS,
+                                                        dockerRunArgs: "-v pipcache_getmarcapi:/.cache/pip",
+                                                        retry: 2
                                                  )
                                     parallel(jobs)
                                 }
