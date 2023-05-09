@@ -191,7 +191,7 @@ startup()
 props = get_props()
 DEFAULT_DOCKER_AGENT_FILENAME = 'ci/docker/python/linux/Dockerfile'
 DEFAULT_DOCKER_AGENT_LABELS = 'linux && docker && x86'
-DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
+DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL --build-arg PIP_CACHE_DIR=/.cache/pip'
 
 pipeline {
     agent none
@@ -219,9 +219,6 @@ pipeline {
             }
             stages{
                 stage('Checks') {
-                    when{
-                        equals expected: true, actual: params.RUN_CHECKS
-                    }
                     stages{
                         stage('Code Quality Checks'){
                             agent {
@@ -231,6 +228,10 @@ pipeline {
                                     additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                                     args '--mount source=sonar-cache-getmarcapi,target=/home/user/.sonar/cache'
                                 }
+                            }
+                            when{
+                                equals expected: true, actual: params.RUN_CHECKS
+                                beforeAgent true
                             }
                             stages{
                                 stage('Configuring Testing Environment'){
@@ -477,7 +478,7 @@ pipeline {
                                     def tox = fileLoader.fromGit(
                                         'tox',
                                         'https://github.com/UIUCLibrary/jenkins_helper_scripts.git',
-                                        '4',
+                                        '8',
                                         null,
                                         ''
                                     )
@@ -485,7 +486,9 @@ pipeline {
                                                         envNamePrefix: 'Linux',
                                                         label: DEFAULT_DOCKER_AGENT_LABELS,
                                                         dockerfile: 'ci/docker/python/tox/Dockerfile',
-                                                        dockerArgs: DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+                                                        dockerArgs: DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS,
+                                                        dockerRunArgs: "-v pipcache_getmarcapi:/.cache/pip",
+                                                        retry: 2
                                                  )
                                     parallel(jobs)
                                 }
