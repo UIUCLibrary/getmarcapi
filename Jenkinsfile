@@ -420,7 +420,7 @@ pipeline {
                                     steps{
                                         script{
 
-                                            withSonarQubeEnv(installationName:'sonarcloud', credentialsId: 'sonarcloud-getmarcapi') {
+                                            withSonarQubeEnv(installationName:'sonarcloud', credentialsId: 'sonarcloud_token') {
                                                 if (env.CHANGE_ID){
                                                     sh(
                                                         label: 'Running Sonar Scanner',
