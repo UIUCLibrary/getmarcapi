@@ -18,16 +18,17 @@ RUN n stable -y && \
     chmod 777 /.npm
 
 
-# ==============================================================================
-FROM wheel_builder_base
 ARG PIP_CACHE_DIR
 ARG PIP_EXTRA_INDEX_URL
 ARG PIP_INDEX_URL
+COPY requirements/ /tmp/python_requirements/requirements/
+COPY requirements-ci.txt /tmp/python_requirements
+
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install --no-cache-dir -r /tmp/python_requirements/requirements-ci.txt
+
 RUN mkdir -p ${PIP_CACHE_DIR} && chmod -R 777 ${PIP_CACHE_DIR} && \
     chmod -R 777 /.cache
-
-RUN python3 -m pip install --no-cache-dir pip --upgrade && \
-    pip3 install --no-cache-dir tox "devpi-client"
-WORKDIR /src
 ENV PIP_CACHE_DIR = ${PIP_CACHE_DIR}
+WORKDIR /src
 CMD ["tox", "--workdir", "/tmp/tox/", "-vv", "--parallel--safe-build", "--recreate"]
