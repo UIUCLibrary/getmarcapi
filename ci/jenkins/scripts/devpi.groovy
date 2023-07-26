@@ -256,7 +256,7 @@ def getToxEnvName(args){
     }
 }
 
-def testDevpiPackage2(args=[:]){
+def testDevpiPackage(args=[:]){
     def agent = getAgent(args)
     def devpiExec = args.devpi['devpiExec'] ? args.devpi['devpiExec'] : "devpi"
     def devpiIndex = args.devpi.index
@@ -291,7 +291,7 @@ def testDevpiPackage2(args=[:]){
     }
 }
 return [
-    testDevpiPackage: this.&testDevpiPackage2,
+    testDevpiPackage: this.&testDevpiPackage,
     removePackage: this.&removePackage,
     pushPackageToIndex: this.&pushPackageToIndex,
     upload: this.&upload
