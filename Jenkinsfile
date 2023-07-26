@@ -613,7 +613,7 @@ pipeline {
                     }
                     agent none
                     options{
-                        lock('pyhathiprep-devpi')
+                        lock('getmarcapi-devpi')
                     }
                     stages{
                         stage('Uploading to DevPi Staging'){
