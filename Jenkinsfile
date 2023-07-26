@@ -1,8 +1,9 @@
 SUPPORTED_LINUX_VERSIONS = ['3.8', '3.9', '3.10', '3.11']
+DEVPI_CONFIG_FILE_ID = 'devpi_config'
 
 def getDevpiConfig() {
     node(){
-        configFileProvider([configFile(fileId: 'devpi_config', variable: 'CONFIG_FILE')]) {
+        configFileProvider([configFile(fileId: DEVPI_CONFIG_FILE_ID, variable: 'CONFIG_FILE')]) {
             def configProperties = readProperties(file: CONFIG_FILE)
             configProperties.stagingIndex = {
                 if (env.TAG_NAME?.trim()){
@@ -15,7 +16,6 @@ def getDevpiConfig() {
         }
     }
 }
-def DEVPI_CONFIG = getDevpiConfig()
 
 def getPypiConfig() {
     node(){
@@ -594,6 +594,19 @@ pipeline {
                                 equals expected: 'dev', actual: env.BRANCH_NAME
                                 tag '*'
                             }
+                            expression{
+                                try{
+                                    node(){
+                                        configFileProvider([configFile(fileId: DEVPI_CONFIG_FILE_ID, variable: 'CONFIG_FILE')]) {
+                                            readProperties(file: CONFIG_FILE)
+                                        }
+                                    }
+                                } catch(e){
+                                    echo "No config file found with fileID: ${DEVPI_CONFIG_FILE_ID}."
+                                    return false
+                                }
+                                return true
+                            }
                         }
                         beforeAgent true
                         beforeOptions true
@@ -615,10 +628,11 @@ pipeline {
                                 timeout(5){
                                     unstash 'PYTHON_PACKAGES'
                                     script{
+                                        def devpiConfig = getDevpiConfig()
                                         devpi.upload(
-                                                server: DEVPI_CONFIG.server,
-                                                credentialsId: DEVPI_CONFIG.credentialsId,
-                                                index: DEVPI_CONFIG.stagingIndex,
+                                                server: devpiConfig.server,
+                                                credentialsId: devpiConfig.credentialsId,
+                                                index: devpiConfig.stagingIndex,
                                                 clientDir: './devpi'
                                             )
                                     }
@@ -640,6 +654,7 @@ pipeline {
                         stage('Test DevPi packages') {
                             steps{
                                 script{
+                                    def devpiConfig = getDevpiConfig()
                                     def linuxPackages = [:]
                                     SUPPORTED_LINUX_VERSIONS.each{pythonVersion ->
                                         linuxPackages["Test Python ${pythonVersion}: sdist Linux"] = {
@@ -652,9 +667,9 @@ pipeline {
                                                     ]
                                                 ],
                                                  devpi: [
-                                                    index: DEVPI_CONFIG.stagingIndex,
-                                                    server: DEVPI_CONFIG.server,
-                                                    credentialsId: DEVPI_CONFIG.credentialsId,
+                                                    index: devpiConfig.stagingIndex,
+                                                    server: devpiConfig.server,
+                                                    credentialsId: devpiConfig.credentialsId,
                                                 ],
                                                 package:[
                                                     name: props.Name,
@@ -676,9 +691,9 @@ pipeline {
                                                     ]
                                                 ],
                                                  devpi: [
-                                                    index: DEVPI_CONFIG.stagingIndex,
-                                                    server: DEVPI_CONFIG.server,
-                                                    credentialsId: DEVPI_CONFIG.credentialsId,
+                                                    index: devpiConfig.stagingIndex,
+                                                    server: devpiConfig.server,
+                                                    credentialsId: devpiConfig.credentialsId,
                                                 ],
                                                 package:[
                                                     name: props.Name,
@@ -722,10 +737,10 @@ pipeline {
                                     devpi.pushPackageToIndex(
                                         pkgName: props.Name,
                                         pkgVersion: props.Version,
-                                        server: DEVPI_CONFIG.server,
-                                        indexSource: DEVPI_CONFIG.stagingIndex,
+                                        server: devpiConfig.server,
+                                        indexSource: devpiConfig.stagingIndex,
                                         indexDestination: 'production/release',
-                                        credentialsId: DEVPI_CONFIG.credentialsId
+                                        credentialsId: devpiConfig.credentialsId
                                     )
                                 }
                             }
@@ -741,10 +756,10 @@ pipeline {
                                             devpi.pushPackageToIndex(
                                                 pkgName: props.Name,
                                                 pkgVersion: props.Version,
-                                                server: DEVPI_CONFIG.server,
-                                                indexSource: DEVPI_CONFIG.stagingIndex,
+                                                server: devpiConfig.server,
+                                                indexSource: devpiConfig.stagingIndex,
                                                 indexDestination: "DS_Jenkins/${env.BRANCH_NAME}",
-                                                credentialsId: DEVPI_CONFIG.credentialsId
+                                                credentialsId: devpiConfig.credentialsId
                                             )
                                         }
                                     }
@@ -758,9 +773,9 @@ pipeline {
                                         devpi.removePackage(
                                             pkgName: props.Name,
                                             pkgVersion: props.Version,
-                                            index: DEVPI_CONFIG.stagingIndex,
-                                            server: DEVPI_CONFIG.server,
-                                            credentialsId: DEVPI_CONFIG.credentialsId,
+                                            index: devpiConfig.stagingIndex,
+                                            server: devpiConfig.server,
+                                            credentialsId: devpiConfig.credentialsId,
 
                                         )
                                     }
