@@ -210,6 +210,7 @@ pipeline {
         booleanParam(name: 'RUN_CHECKS', defaultValue: true, description: 'Run checks on code')
         booleanParam(name: 'TEST_RUN_TOX', defaultValue: false, description: 'Run Tox Tests')
         booleanParam(name: 'USE_SONARQUBE', defaultValue: true, description: 'Send data test data to SonarQube')
+        credentials(name: 'SONARCLOUD_TOKEN', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', defaultValue: 'sonarcloud_token', required: false)
         booleanParam(name: 'BUILD_PACKAGES', defaultValue: false, description: 'Build Python packages')
         booleanParam(name: 'TEST_PACKAGES', defaultValue: true, description: 'Test Python packages by installing them and running tests on the installed package')
         booleanParam(name: 'INCLUDE_ARM_LINUX', defaultValue: false, description: 'Include ARM architecture for Linux')
@@ -413,14 +414,26 @@ pipeline {
                                         retry(3)
                                     }
                                     when{
-                                        equals expected: true, actual: params.USE_SONARQUBE
+                                        allOf{
+                                            equals expected: true, actual: params.USE_SONARQUBE
+                                            expression{
+                                                try{
+                                                    withCredentials([string(credentialsId: params.SONARCLOUD_TOKEN, variable: 'dddd')]) {
+                                                        echo 'Found credentials for sonarqube'
+                                                    }
+                                                } catch(e){
+                                                    echo 'No credentials found for sonarqube.'
+                                                    return false
+                                                }
+                                                return true
+                                            }
+                                        }
                                         beforeAgent true
                                         beforeOptions true
                                     }
                                     steps{
                                         script{
-
-                                            withSonarQubeEnv(installationName:'sonarcloud', credentialsId: 'sonarcloud_token') {
+                                            withSonarQubeEnv(installationName:'sonarcloud', credentialsId: params.SONARCLOUD_TOKEN) {
                                                 if (env.CHANGE_ID){
                                                     sh(
                                                         label: 'Running Sonar Scanner',
