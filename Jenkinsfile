@@ -1,8 +1,9 @@
 SUPPORTED_LINUX_VERSIONS = ['3.8', '3.9', '3.10', '3.11']
+DEVPI_CONFIG_FILE_ID = 'devpi_config'
 
 def getDevpiConfig() {
     node(){
-        configFileProvider([configFile(fileId: 'devpi_config', variable: 'CONFIG_FILE')]) {
+        configFileProvider([configFile(fileId: DEVPI_CONFIG_FILE_ID, variable: 'CONFIG_FILE')]) {
             def configProperties = readProperties(file: CONFIG_FILE)
             configProperties.stagingIndex = {
                 if (env.TAG_NAME?.trim()){
@@ -15,7 +16,6 @@ def getDevpiConfig() {
         }
     }
 }
-def DEVPI_CONFIG = getDevpiConfig()
 
 def getPypiConfig() {
     node(){
@@ -210,6 +210,7 @@ pipeline {
         booleanParam(name: 'RUN_CHECKS', defaultValue: true, description: 'Run checks on code')
         booleanParam(name: 'TEST_RUN_TOX', defaultValue: false, description: 'Run Tox Tests')
         booleanParam(name: 'USE_SONARQUBE', defaultValue: true, description: 'Send data test data to SonarQube')
+        credentials(name: 'SONARCLOUD_TOKEN', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', defaultValue: 'sonarcloud_token', required: false)
         booleanParam(name: 'BUILD_PACKAGES', defaultValue: false, description: 'Build Python packages')
         booleanParam(name: 'TEST_PACKAGES', defaultValue: true, description: 'Test Python packages by installing them and running tests on the installed package')
         booleanParam(name: 'INCLUDE_ARM_LINUX', defaultValue: false, description: 'Include ARM architecture for Linux')
@@ -413,14 +414,26 @@ pipeline {
                                         retry(3)
                                     }
                                     when{
-                                        equals expected: true, actual: params.USE_SONARQUBE
+                                        allOf{
+                                            equals expected: true, actual: params.USE_SONARQUBE
+                                            expression{
+                                                try{
+                                                    withCredentials([string(credentialsId: params.SONARCLOUD_TOKEN, variable: 'dddd')]) {
+                                                        echo 'Found credentials for sonarqube'
+                                                    }
+                                                } catch(e){
+                                                    echo 'No credentials found for sonarqube.'
+                                                    return false
+                                                }
+                                                return true
+                                            }
+                                        }
                                         beforeAgent true
                                         beforeOptions true
                                     }
                                     steps{
                                         script{
-
-                                            withSonarQubeEnv(installationName:'sonarcloud', credentialsId: 'sonarcloud_token') {
+                                            withSonarQubeEnv(installationName:'sonarcloud', credentialsId: params.SONARCLOUD_TOKEN) {
                                                 if (env.CHANGE_ID){
                                                     sh(
                                                         label: 'Running Sonar Scanner',
@@ -581,6 +594,19 @@ pipeline {
                                 equals expected: 'dev', actual: env.BRANCH_NAME
                                 tag '*'
                             }
+                            expression{
+                                try{
+                                    node(){
+                                        configFileProvider([configFile(fileId: DEVPI_CONFIG_FILE_ID, variable: 'CONFIG_FILE')]) {
+                                            readProperties(file: CONFIG_FILE)
+                                        }
+                                    }
+                                } catch(e){
+                                    echo "No config file found with fileID: ${DEVPI_CONFIG_FILE_ID}."
+                                    return false
+                                }
+                                return true
+                            }
                         }
                         beforeAgent true
                         beforeOptions true
@@ -602,10 +628,11 @@ pipeline {
                                 timeout(5){
                                     unstash 'PYTHON_PACKAGES'
                                     script{
+                                        def devpiConfig = getDevpiConfig()
                                         devpi.upload(
-                                                server: DEVPI_CONFIG.server,
-                                                credentialsId: DEVPI_CONFIG.credentialsId,
-                                                index: DEVPI_CONFIG.stagingIndex,
+                                                server: devpiConfig.server,
+                                                credentialsId: devpiConfig.credentialsId,
+                                                index: devpiConfig.stagingIndex,
                                                 clientDir: './devpi'
                                             )
                                     }
@@ -627,6 +654,7 @@ pipeline {
                         stage('Test DevPi packages') {
                             steps{
                                 script{
+                                    def devpiConfig = getDevpiConfig()
                                     def linuxPackages = [:]
                                     SUPPORTED_LINUX_VERSIONS.each{pythonVersion ->
                                         linuxPackages["Test Python ${pythonVersion}: sdist Linux"] = {
@@ -639,9 +667,9 @@ pipeline {
                                                     ]
                                                 ],
                                                  devpi: [
-                                                    index: DEVPI_CONFIG.stagingIndex,
-                                                    server: DEVPI_CONFIG.server,
-                                                    credentialsId: DEVPI_CONFIG.credentialsId,
+                                                    index: devpiConfig.stagingIndex,
+                                                    server: devpiConfig.server,
+                                                    credentialsId: devpiConfig.credentialsId,
                                                 ],
                                                 package:[
                                                     name: props.Name,
@@ -663,9 +691,9 @@ pipeline {
                                                     ]
                                                 ],
                                                  devpi: [
-                                                    index: DEVPI_CONFIG.stagingIndex,
-                                                    server: DEVPI_CONFIG.server,
-                                                    credentialsId: DEVPI_CONFIG.credentialsId,
+                                                    index: devpiConfig.stagingIndex,
+                                                    server: devpiConfig.server,
+                                                    credentialsId: devpiConfig.credentialsId,
                                                 ],
                                                 package:[
                                                     name: props.Name,
@@ -709,10 +737,10 @@ pipeline {
                                     devpi.pushPackageToIndex(
                                         pkgName: props.Name,
                                         pkgVersion: props.Version,
-                                        server: DEVPI_CONFIG.server,
-                                        indexSource: DEVPI_CONFIG.stagingIndex,
+                                        server: devpiConfig.server,
+                                        indexSource: devpiConfig.stagingIndex,
                                         indexDestination: 'production/release',
-                                        credentialsId: DEVPI_CONFIG.credentialsId
+                                        credentialsId: devpiConfig.credentialsId
                                     )
                                 }
                             }
@@ -728,10 +756,10 @@ pipeline {
                                             devpi.pushPackageToIndex(
                                                 pkgName: props.Name,
                                                 pkgVersion: props.Version,
-                                                server: DEVPI_CONFIG.server,
-                                                indexSource: DEVPI_CONFIG.stagingIndex,
+                                                server: devpiConfig.server,
+                                                indexSource: devpiConfig.stagingIndex,
                                                 indexDestination: "DS_Jenkins/${env.BRANCH_NAME}",
-                                                credentialsId: DEVPI_CONFIG.credentialsId
+                                                credentialsId: devpiConfig.credentialsId
                                             )
                                         }
                                     }
@@ -745,9 +773,9 @@ pipeline {
                                         devpi.removePackage(
                                             pkgName: props.Name,
                                             pkgVersion: props.Version,
-                                            index: DEVPI_CONFIG.stagingIndex,
-                                            server: DEVPI_CONFIG.server,
-                                            credentialsId: DEVPI_CONFIG.credentialsId,
+                                            index: devpiConfig.stagingIndex,
+                                            server: devpiConfig.server,
+                                            credentialsId: devpiConfig.credentialsId,
 
                                         )
                                     }
