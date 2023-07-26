@@ -1,17 +1,18 @@
 ARG PIP_CACHE_DIR=/.cache/pip
-FROM ubuntu:20.04 as wheel_builder_base
+FROM ubuntu:22.04 as wheel_builder_base
 COPY ci/docker/python/tox/apt-packages.txt /tmp/apt-packages.txt
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y software-properties-common && \
+    apt-get install -y software-properties-common gpg-agent --no-install-recommends && \
     add-apt-repository ppa:deadsnakes/ppa && \
+    DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install tzdata && \
     apt-get update && \
-    < /tmp/apt-packages.txt xargs apt-get install --no-install-recommends -y && \
-    npm cache clean -f && \
-    npm install -g n && \
+     < /tmp/apt-packages.txt xargs apt-get install -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+RUN npm cache clean -f && \
+    npm install -g n
 RUN n stable -y && \
     npm install -g npm && \
     mkdir /.npm && \
