@@ -137,7 +137,11 @@ def get_record() -> Response:
         app.logger.info("Failed to retrieve record")
         return Response(f"Failed. {error}", 400, content_type="text")
 
-
+@app.route('/info', endpoint="get_info")
+def get_info():
+    return {
+        "info": True
+    }
 @app.errorhandler(getmarc2.records.NoRecordsFound)
 def handle_no_records_found(error):
     """Return JSON instead of HTML for HTTP errors."""
