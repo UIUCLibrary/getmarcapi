@@ -72,7 +72,7 @@ def testPackages(){
             }
             architectures.each{ processorArchitecture ->
                 linuxTestStages["Linux-${processorArchitecture} - Python ${pythonVersion}: wheel"] = {
-                    packages.testPkg2(
+                    packages.testPkg(
                         agent: [
                             dockerfile: [
                                 label: "linux && docker && ${processorArchitecture}",
@@ -112,7 +112,7 @@ def testPackages(){
                     )
                 }
                 linuxTestStages["Linux-${processorArchitecture} - Python ${pythonVersion}: sdist"] = {
-                    packages.testPkg2(
+                    packages.testPkg(
                         agent: [
                             dockerfile: [
                                 label: "linux && docker && ${processorArchitecture}",
@@ -120,6 +120,7 @@ def testPackages(){
                                 additionalBuildArgs: '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
                             ]
                         ],
+                        retries: 3,
                         testSetup: {
                             checkout scm
                             unstash 'PYTHON_PACKAGES'
