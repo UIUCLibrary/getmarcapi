@@ -1,3 +1,8 @@
+library identifier: 'JenkinsPythonHelperLibrary@2024.1.1', retriever: modernSCM(
+  [$class: 'GitSCMSource',
+   remote: 'https://github.com/UIUCLibrary/JenkinsPythonHelperLibrary.git',
+   ])
+
 SUPPORTED_LINUX_VERSIONS = ['3.8', '3.9', '3.10', '3.11']
 DEVPI_CONFIG_FILE_ID = 'devpi_config'
 
@@ -56,11 +61,11 @@ def loadHelper(file){
 
 def testPackages(){
     script{
-        def packages
-        node(){
-            checkout scm
-            packages = load 'ci/jenkins/scripts/packaging.groovy'
-        }
+//        def packages
+//        node(){
+//            checkout scm
+//            packages = load 'ci/jenkins/scripts/packaging.groovy'
+//        }
         def linuxTestStages = [:]
         SUPPORTED_LINUX_VERSIONS.each{ pythonVersion ->
             def architectures = []
@@ -72,7 +77,7 @@ def testPackages(){
             }
             architectures.each{ processorArchitecture ->
                 linuxTestStages["Linux-${processorArchitecture} - Python ${pythonVersion}: wheel"] = {
-                    packages.testPkg(
+                    testPythonPkg(
                         agent: [
                             dockerfile: [
                                 label: "linux && docker && ${processorArchitecture}",
@@ -112,7 +117,7 @@ def testPackages(){
                     )
                 }
                 linuxTestStages["Linux-${processorArchitecture} - Python ${pythonVersion}: sdist"] = {
-                    packages.testPkg(
+                    testPythonPkg(
                         agent: [
                             dockerfile: [
                                 label: "linux && docker && ${processorArchitecture}",
@@ -504,14 +509,7 @@ pipeline {
                             }
                             steps{
                                 script{
-                                    def tox = fileLoader.fromGit(
-                                        'tox',
-                                        'https://github.com/UIUCLibrary/jenkins_helper_scripts.git',
-                                        '8',
-                                        null,
-                                        ''
-                                    )
-                                    def jobs = tox.getToxTestsParallel(
+                                    def jobs = getToxTestsParallel(
                                                         envNamePrefix: 'Linux',
                                                         label: DEFAULT_DOCKER_AGENT_LABELS,
                                                         dockerfile: 'ci/docker/python/tox/Dockerfile',
@@ -837,20 +835,11 @@ pipeline {
                             }
                             steps{
                                 unstash 'PYTHON_PACKAGES'
-                                script{
-                                    def pypi = fileLoader.fromGit(
-                                            'pypi',
-                                            'https://github.com/UIUCLibrary/jenkins_helper_scripts.git',
-                                            '2',
-                                            null,
-                                            ''
-                                        )
-                                    pypi.pypiUpload(
-                                        credentialsId: 'jenkins-nexus',
-                                        repositoryUrl: SERVER_URL,
-                                        glob: 'dist/*'
-                                        )
-                                }
+                                pypiUpload(
+                                    credentialsId: 'jenkins-nexus',
+                                    repositoryUrl: SERVER_URL,
+                                    glob: 'dist/*'
+                                    )
                             }
                             post{
                                 cleanup{
