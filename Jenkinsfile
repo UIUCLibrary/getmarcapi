@@ -408,13 +408,7 @@ pipeline {
                                                            coverage xml -o reports/coverage.xml
                                                            '''
                                             )
-                                            publishCoverage(
-                                                adapters: [
-                                                    coberturaAdapter('reports/coverage.xml')
-                                                ],
-                                                sourceFileResolver: sourceFiles('STORE_ALL_BUILD')
-                                            )
-
+                                            recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'reports/coverage.xml']])
                                         }
                                     }
                                 }
