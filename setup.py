@@ -79,7 +79,6 @@ setup(
 
     ],
     tests_require=['pytest'],
-    setup_requires=['pytest-runner'],
     cmdclass={
         'webpack': WebPackCommand,
         'build': NewBuildCommand,

@@ -10,7 +10,6 @@ paramiko
 pydocstyle
 pylint
 pytest
-pytest-runner
 sphinx
 sphinxcontrib.spelling
 tox
