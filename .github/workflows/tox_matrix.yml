@@ -22,7 +22,7 @@ jobs:
         run: |
           pip install wheel
           pip install tox
-          pip install -r requirements-develop.txt
+          pip install -r requirements-dev.txt
         env:
           PIP_EXTRA_INDEX_URL: ${{vars.PIP_EXTRA_INDEX_URL}}
       - name: Run tox
