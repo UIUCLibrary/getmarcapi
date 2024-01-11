@@ -1,5 +1,6 @@
 ARG PIP_CACHE_DIR=/.cache/pip
-FROM ubuntu:22.04 as wheel_builder_base
+
+FROM ubuntu:22.04 AS wheel_builder_base
 COPY ci/docker/python/tox/apt-packages.txt /tmp/apt-packages.txt
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN apt-get update && \
@@ -26,7 +27,7 @@ COPY requirements/ /tmp/python_requirements/requirements/
 COPY requirements-dev.txt /tmp/python_requirements
 
 RUN python3 -m pip install --upgrade pip && \
-    pip3 install --no-cache-dir -r /tmp/python_requirements/requirements-dev.txt
+    pip3 install --no-cache-dir --ignore-installed -r /tmp/python_requirements/requirements-dev.txt
 
 RUN mkdir -p ${PIP_CACHE_DIR} && chmod -R 777 ${PIP_CACHE_DIR} && \
     chmod -R 777 /.cache
