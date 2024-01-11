@@ -1,7 +1,6 @@
 bandit
 build
 coverage
-devpi-client
 flask
 flake8
 lxml-stubs
@@ -10,7 +9,6 @@ paramiko
 pydocstyle
 pylint
 pytest
-pytest-runner
 sphinx
 sphinxcontrib.spelling
 tox
