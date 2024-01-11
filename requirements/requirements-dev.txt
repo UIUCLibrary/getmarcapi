@@ -1,7 +1,6 @@
 bandit
 build
 coverage
-devpi-client
 flask
 flake8
 lxml-stubs

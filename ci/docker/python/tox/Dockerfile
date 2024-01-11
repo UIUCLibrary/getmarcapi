@@ -1,3 +1,4 @@
+ARG PIPX_HOME=/pipx
 ARG PIP_CACHE_DIR=/.cache/pip
 
 FROM ubuntu:22.04 AS wheel_builder_base
@@ -27,10 +28,22 @@ COPY requirements/ /tmp/python_requirements/requirements/
 COPY requirements-dev.txt /tmp/python_requirements
 
 RUN python3 -m pip install --upgrade pip && \
-    pip3 install --no-cache-dir --ignore-installed -r /tmp/python_requirements/requirements-dev.txt
+    pip3 install --no-cache-dir --ignore-installed  -r /tmp/python_requirements/requirements-dev.txt
 
 RUN mkdir -p ${PIP_CACHE_DIR} && chmod -R 777 ${PIP_CACHE_DIR} && \
     chmod -R 777 /.cache
 ENV PIP_CACHE_DIR = ${PIP_CACHE_DIR}
+
+ARG PIPX_HOME
+ENV PIPX_HOME=${PIPX_HOME}
+ENV PIPX_BIN_DIR=${PIPX_HOME}/bin
+RUN pip3 install --no-cache-dir pipx && \
+    pipx ensurepath && \
+    mkdir -p $PIPX_HOME  && chmod -R 777 $PIPX_HOME
+RUN PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install 'devpi-client<7.0' &&  \
+    PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install pip-audit
+
+
+
 WORKDIR /src
 CMD ["tox", "--workdir", "/tmp/tox/", "-vv", "--parallel--safe-build", "--recreate"]
