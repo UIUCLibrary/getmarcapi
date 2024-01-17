@@ -677,6 +677,7 @@ pipeline {
                                                             server: devpiConfig.server,
                                                             credentialsId: devpiConfig.credentialsId,
                                                         ],
+                                                        retries: 3,
                                                         package:[
                                                             name: props.Name,
                                                             version: props.Version,
@@ -701,6 +702,7 @@ pipeline {
                                                             server: devpiConfig.server,
                                                             credentialsId: devpiConfig.credentialsId,
                                                         ],
+                                                        retries: 3,
                                                         package:[
                                                             name: props.Name,
                                                             version: props.Version,
