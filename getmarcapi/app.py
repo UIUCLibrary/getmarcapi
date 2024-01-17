@@ -115,7 +115,7 @@ def get_record() -> Response:
             )
 
         header = {"x-api-version": "v1"}
-        app.logger.info(f"Retrieved record for {identifier}")
+        app.logger.info("Retrieved record for %s", identifier)
 
         if 'bib_id' in request.args:
             field_adder = modifiers.Add955()
