@@ -579,13 +579,18 @@ pipeline {
             }
         }
         stage('Deployment'){
+            when{
+                anyOf {
+                    equals expected: true, actual: params.DEPLOY_DEVPI
+                    equals expected: true, actual: params.DEPLOY_PYPI
+                    equals expected: true, actual: params.DEPLOY_TO_PRODUCTION
+                }
+            }
             stages{
                 stage('Deploy to Devpi'){
                     when {
                         allOf{
-                            anyOf{
-                                equals expected: true, actual: params.DEPLOY_DEVPI
-                            }
+                            equals expected: true, actual: params.DEPLOY_DEVPI
                             anyOf {
                                 equals expected: 'master', actual: env.BRANCH_NAME
                                 equals expected: 'dev', actual: env.BRANCH_NAME
@@ -799,6 +804,12 @@ pipeline {
                     }
                 }
                 stage('Additional Deploy') {
+                    when{
+                        anyOf {
+                            equals expected: true, actual: params.DEPLOY_PYPI
+                            equals expected: true, actual: params.DEPLOY_TO_PRODUCTION
+                        }
+                    }
                     parallel{
                         stage('Deploy to pypi') {
                             agent {
