@@ -85,6 +85,7 @@ def testPackages(){
                                 additionalBuildArgs: '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
                             ]
                         ],
+                        retries: 3,
                         testSetup: {
                             checkout scm
                             unstash 'PYTHON_PACKAGES'
