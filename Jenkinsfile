@@ -541,6 +541,9 @@ pipeline {
                             additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                         }
                     }
+                    options{
+                        retry(2)
+                    }
                     steps{
                         timeout(5){
                             withEnv(['PIP_NO_CACHE_DIR=off']) {
