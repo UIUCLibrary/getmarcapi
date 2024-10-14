@@ -26,7 +26,12 @@ def get_sonarqube_unresolved_issues(report_task_file){
     }
 }
 
-
+def getVersion(){
+    node(){
+        checkout scm
+        return readTOML( file: 'pyproject.toml')['project']
+    }
+}
 def loadHelper(file){
     node(){
         checkout scm
@@ -147,48 +152,11 @@ def startup(){
                     mineRepository()
                 }
             },
-            'Getting Distribution Info':{
-                node('linux && docker && x86') {
-                    ws{
-                        checkout scm
-                        try{
-                            docker.image('python').inside {
-                                timeout(2){
-
-                                    sh(
-                                        label: 'Running setup.py with dist_info',
-                                        script: '''PIP_NO_CACHE_DIR=off python --version
-                                                   PIP_NO_CACHE_DIR=off python setup.py dist_info
-                                                '''
-                                    )
-                                    stash includes: '*.dist-info/**', name: 'DIST-INFO'
-                                    archiveArtifacts artifacts: '*.dist-info/**'
-                                }
-                            }
-                        } finally{
-                            deleteDir()
-                        }
-                    }
-                }
-            }
         ]
     )
 }
-def get_props(){
-    stage('Reading Package Metadata'){
-        node(){
-            unstash 'DIST-INFO'
-            def metadataFile = findFiles( glob: '*.dist-info/METADATA')[0]
-            def metadata = readProperties(interpolate: true, file: metadataFile.path )
-            echo """Version = ${metadata.Version}
-Name = ${metadata.Name}
-"""
-            return metadata
-        }
-    }
-}
+
 startup()
-props = get_props()
 DEFAULT_DOCKER_AGENT_FILENAME = 'ci/docker/python/linux/Dockerfile'
 DEFAULT_DOCKER_AGENT_LABELS = 'linux && docker && x86'
 DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS = '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL --build-arg PIP_CACHE_DIR=/.cache/pip'
@@ -414,16 +382,17 @@ pipeline {
                                     }
                                     steps{
                                         script{
+                                            def props = readTOML( file: 'pyproject.toml')['project']
                                             withSonarQubeEnv(installationName:'sonarcloud', credentialsId: params.SONARCLOUD_TOKEN) {
                                                 if (env.CHANGE_ID){
                                                     sh(
                                                         label: 'Running Sonar Scanner',
-                                                        script:"sonar-scanner -Dsonar.projectVersion=${props.Version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.CHANGE_TARGET}"
+                                                        script:"sonar-scanner -Dsonar.projectVersion=${props.version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.CHANGE_TARGET}"
                                                         )
                                                 } else {
                                                     sh(
                                                         label: 'Running Sonar Scanner',
-                                                        script: "sonar-scanner -Dsonar.projectVersion=${props.Version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.branch.name=${env.BRANCH_NAME}"
+                                                        script: "sonar-scanner -Dsonar.projectVersion=${props.version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.branch.name=${env.BRANCH_NAME}"
                                                         )
                                                 }
                                             }
@@ -629,7 +598,7 @@ pipeline {
                             input {
                                 message 'Deploy to to server'
                                 parameters {
-                                    string defaultValue: props.Version, description: 'Tag associated with the docker image', name: 'DOCKER_TAG', trim: true
+                                    string defaultValue: "${getVersion()}", description: 'Tag associated with the docker image', name: 'DOCKER_TAG', trim: true
                                     string defaultValue: 'getmarcapi', description: 'Name used for the image by Docker', name: 'IMAGE_NAME', trim: true
                                 }
                             }
