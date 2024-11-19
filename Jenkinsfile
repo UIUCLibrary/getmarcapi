@@ -96,29 +96,71 @@ pipeline {
                                     args '--mount source=sonar-cache-getmarcapi,target=/home/user/.sonar/cache'
                                 }
                             }
+                            environment{
+                                PIP_CACHE_DIR='/tmp/pipcache'
+                                UV_INDEX_STRATEGY='unsafe-best-match'
+                                UV_TOOL_DIR='/tmp/uvtools'
+                                UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
+                                UV_CACHE_DIR='/tmp/uvcache'
+                            }
                             when{
                                 equals expected: true, actual: params.RUN_CHECKS
                                 beforeAgent true
                             }
                             stages{
-                                stage('Configuring Testing Environment'){
-                                    steps{
-                                        sh(
-                                            label: 'Creating logging and report directories',
-                                            script: '''
-                                                mkdir -p logs
-                                                mkdir -p reports/coverage
-                                                mkdir -p reports/doctests
-                                                mkdir -p reports/mypy/html
-                                            '''
-                                        )
+                                stage('Setup'){
+                                    stages{
+                                        stage('Setup Testing Environment'){
+                                            steps{
+                                                sh(
+                                                    label: 'Create virtual environment',
+                                                    script: '''python3 -m venv bootstrap_uv
+                                                               bootstrap_uv/bin/pip install uv
+                                                               bootstrap_uv/bin/uv venv venv
+                                                               . ./venv/bin/activate
+                                                               bootstrap_uv/bin/uv pip install --index-strategy unsafe-best-match uv
+                                                               rm -rf bootstrap_uv
+                                                               uv pip install --index-strategy unsafe-best-match -r requirements-dev.txt
+                                                               '''
+                                               )
+                                            }
+                                        }
+                                        stage('Installing project as editable module'){
+                                            steps{
+                                                timeout(10){
+                                                    sh(
+                                                        label: 'Install package in development mode',
+                                                        script: '''. ./venv/bin/activate
+                                                                   uv pip install -e .
+                                                                '''
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        stage('Configuring Testing Environment'){
+                                            steps{
+                                                sh(
+                                                    label: 'Creating logging and report directories',
+                                                    script: '''
+                                                        mkdir -p logs
+                                                        mkdir -p reports/coverage
+                                                        mkdir -p reports/doctests
+                                                        mkdir -p reports/mypy/html
+                                                    '''
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                                 stage('Running Tests'){
                                     parallel {
                                         stage('PyTest'){
                                             steps{
-                                                sh script: 'coverage run --parallel-mode --source getmarcapi -m pytest --junitxml=reports/pytest/junit-pytest.xml ', returnStatus: true
+                                                sh(script: '''. ./venv/bin/activate
+                                                               coverage run --parallel-mode --source getmarcapi -m pytest --junitxml=reports/pytest/junit-pytest.xml
+                                                           ''',
+                                                   returnStatus: true
+                                                   )
                                             }
                                             post {
                                                 always {
@@ -153,9 +195,9 @@ pipeline {
                                                 catchError(buildResult: 'SUCCESS', message: 'Did not pass all pyDocStyle tests', stageResult: 'UNSTABLE') {
                                                     sh(
                                                         label: 'Run pydocstyle',
-                                                        script: '''mkdir -p reports
+                                                        script: '''. ./venv/bin/activate
                                                                    pydocstyle getmarcapi > reports/pydocstyle-report.txt
-                                                                   '''
+                                                                '''
                                                     )
                                                 }
                                             }
@@ -169,7 +211,9 @@ pipeline {
                                             steps{
                                                 catchError(buildResult: 'SUCCESS', message: 'mypy found issues', stageResult: 'UNSTABLE') {
                                                     // Note: this misses the uiucprescon.getmarc2 namespace package stubs because of this issue https://github.com/python/mypy/issues/10045
-                                                    sh "mypy -p getmarcapi --ignore-missing-imports --html-report reports/mypy/html/ > logs/mypy.log"
+                                                    sh '''. ./venv/bin/activate
+                                                          mypy -p getmarcapi --ignore-missing-imports --html-report reports/mypy/html/ > logs/mypy.log
+                                                       '''
                                                 }
                                             }
                                             post {
@@ -184,7 +228,9 @@ pipeline {
                                                 catchError(buildResult: 'SUCCESS', message: 'Bandit found issues', stageResult: 'UNSTABLE') {
                                                     sh(
                                                         label: 'Running bandit',
-                                                        script: 'bandit --format json --output reports/bandit-report.json --recursive getmarcapi || bandit -f html --recursive getmarcapi --output reports/bandit-report.html'
+                                                        script: '''. ./venv/bin/activate
+                                                                   bandit --format json --output reports/bandit-report.json --recursive getmarcapi || bandit -f html --recursive getmarcapi --output reports/bandit-report.html
+                                                                '''
                                                     )
                                                 }
                                             }
@@ -210,15 +256,17 @@ pipeline {
                                                 catchError(buildResult: 'SUCCESS', message: 'Pylint found issues', stageResult: 'UNSTABLE') {
                                                     tee('reports/pylint.txt'){
                                                         sh(
-                                                            script: '''pylint getmarcapi -r n --persistent=n --verbose --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}"
+                                                            script: '''. ./venv/bin/activate
+                                                                       pylint getmarcapi -r n --persistent=n --verbose --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}"
                                                                        ''',
                                                             label: 'Running pylint'
                                                         )
                                                     }
                                                 }
-                                                sh(
-                                                    script: 'pylint getmarcapi  -r n --persistent=n --msg-template="{path}:{module}:{line}: [{msg_id}({symbol}), {obj}] {msg}" > reports/pylint_issues.txt',
-                                                    label: 'Running pylint for sonarqube',
+                                                sh(label: 'Running pylint for sonarqube',
+                                                    script: '''. ./venv/bin/activate
+                                                               pylint getmarcapi  -r n --persistent=n --msg-template="{path}:{module}:{line}: [{msg_id}({symbol}), {obj}] {msg}" > reports/pylint_issues.txt
+                                                            ''',
                                                     returnStatus: true
                                                 )
                                             }
@@ -233,6 +281,7 @@ pipeline {
                                                 catchError(buildResult: 'SUCCESS', message: 'Flake8 found issues', stageResult: 'UNSTABLE') {
                                                     sh(label: 'Running Flake8',
                                                        script: '''mkdir -p logs
+                                                                  . ./venv/bin/activate
                                                                   flake8 getmarcapi --tee --output-file=logs/flake8.log
                                                                '''
                                                        )
@@ -249,7 +298,8 @@ pipeline {
                                         always{
                                             sh(
                                                 label: 'Combining coverage results',
-                                                script: '''coverage combine
+                                                script: '''. ./venv/bin/activate
+                                                           coverage combine
                                                            coverage xml -o reports/coverage.xml
                                                            '''
                                             )
@@ -261,6 +311,13 @@ pipeline {
                                     options{
                                         lock('getmarcapi-sonarscanner')
                                         retry(3)
+                                    }
+                                    environment{
+                                        UV_INDEX_STRATEGY='unsafe-best-match'
+                                        SONAR_SCANNER_HOME='/tmp/sonar'
+                                        UV_TOOL_DIR='/tmp/uvtools'
+                                        UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
+                                        UV_CACHE_DIR='/tmp/uvcache'
                                     }
                                     when{
                                         allOf{
@@ -281,19 +338,28 @@ pipeline {
                                         beforeOptions true
                                     }
                                     steps{
+                                        milestone 1
                                         script{
                                             def props = readTOML( file: 'pyproject.toml')['project']
                                             withSonarQubeEnv(installationName:'sonarcloud', credentialsId: params.SONARCLOUD_TOKEN) {
                                                 if (env.CHANGE_ID){
                                                     sh(
                                                         label: 'Running Sonar Scanner',
-                                                        script:"sonar-scanner -Dsonar.projectVersion=${props.version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.CHANGE_TARGET}"
-                                                        )
+                                                        script: """python3 -m venv venv
+                                                                  venv/bin/pip install --disable-pip-version-check uv
+                                                                  trap "rm -rf venv" EXIT
+                                                                  venv/bin/uvx pysonar-scanner -Dsonar.projectVersion=${props.version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.CHANGE_TARGET}
+                                                               """
+                                                    )
                                                 } else {
                                                     sh(
                                                         label: 'Running Sonar Scanner',
-                                                        script: "sonar-scanner -Dsonar.projectVersion=${props.version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.branch.name=${env.BRANCH_NAME}"
-                                                        )
+                                                        script: """python3 -m venv venv
+                                                                  venv/bin/pip install --disable-pip-version-check uv
+                                                                  trap "rm -rf venv" EXIT
+                                                                  venv/bin/uvx pysonar-scanner -Dsonar.projectVersion=${props.version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.branch.name=${env.BRANCH_NAME}
+                                                               """
+                                                    )
                                                 }
                                             }
                                             milestone label: 'sonarcloud'
@@ -321,6 +387,7 @@ pipeline {
                                             cleanWs(
                                                 deleteDirs: true,
                                                 patterns: [
+                                                    [pattern: 'venv/', type: 'INCLUDE'],
                                                     [pattern: 'reports/', type: 'INCLUDE'],
                                                     [pattern: 'logs/', type: 'INCLUDE'],
                                                     [pattern: 'getmarcapi.dist-info/', type: 'INCLUDE'],
@@ -347,17 +414,83 @@ pipeline {
                             when{
                                 equals expected: true, actual: params.TEST_RUN_TOX
                             }
+                            environment{
+                                PIP_CACHE_DIR='/tmp/pipcache'
+                                UV_INDEX_STRATEGY='unsafe-best-match'
+                                UV_TOOL_DIR='/tmp/uvtools'
+                                UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
+                                UV_CACHE_DIR='/tmp/uvcache'
+                            }
                             steps{
                                 script{
-                                    def jobs = getToxTestsParallel(
-                                                        envNamePrefix: 'Linux',
-                                                        label: DEFAULT_DOCKER_AGENT_LABELS,
-                                                        dockerfile: 'ci/docker/python/tox/Dockerfile',
-                                                        dockerArgs: DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS,
-                                                        dockerRunArgs: "-v pipcache_getmarcapi:/.cache/pip",
-                                                        retry: 2
-                                                 )
-                                    parallel(jobs)
+                                    def envs = []
+                                    node('docker && linux'){
+                                        docker.image('python').inside('--mount source=python-tmp-getmarcapi,target=/tmp'){
+                                            try{
+                                                checkout scm
+                                                sh(script: 'python3 -m venv venv && venv/bin/pip install --disable-pip-version-check uv')
+                                                envs = sh(
+                                                    label: 'Get tox environments',
+                                                    script: './venv/bin/uvx --quiet --with tox-uv tox list -d --no-desc',
+                                                    returnStdout: true,
+                                                ).trim().split('\n')
+                                            } finally{
+                                                cleanWs(
+                                                    patterns: [
+                                                        [pattern: 'venv/', type: 'INCLUDE'],
+                                                        [pattern: '.tox', type: 'INCLUDE'],
+                                                        [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                                    ]
+                                                )
+                                            }
+                                        }
+                                    }
+                                    parallel(
+                                        envs.collectEntries{toxEnv ->
+                                            def version = toxEnv.replaceAll(/py(\d)(\d+)/, '$1.$2')
+                                            [
+                                                "Tox Environment: ${toxEnv}",
+                                                {
+                                                    node('docker && linux'){
+                                                        checkout scm
+                                                        def image
+                                                        lock("${env.JOB_NAME} - ${env.NODE_NAME}"){
+                                                            image = docker.build(UUID.randomUUID().toString(), '-f ci/docker/python/linux/Dockerfile --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL --build-arg PIP_CACHE_DIR=/.cache/pip .')
+                                                        }
+                                                        try{
+                                                            image.inside('--mount source=python-tmp-getmarcapi,target=/tmp'){
+                                                                try{
+                                                                    sh( label: 'Running Tox',
+                                                                        script: """python3 -m venv venv && venv/bin/pip install uv
+                                                                                   . ./venv/bin/activate
+                                                                                   uv python install cpython-${version}
+                                                                                   uvx -p ${version} --with tox-uv tox run -e ${toxEnv}
+                                                                                """
+                                                                        )
+                                                                } catch(e) {
+                                                                    sh(script: '''. ./venv/bin/activate
+                                                                          uv python list
+                                                                          '''
+                                                                            )
+                                                                    throw e
+                                                                } finally{
+                                                                    cleanWs(
+                                                                        patterns: [
+                                                                            [pattern: 'venv/', type: 'INCLUDE'],
+                                                                            [pattern: '.tox', type: 'INCLUDE'],
+                                                                            [pattern: '**/__pycache__/', type: 'INCLUDE'],
+                                                                        ]
+                                                                    )
+                                                                }
+                                                            }
+                                                        } finally {
+                                                            sh "docker rmi --no-prune ${image.id}"
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    )
                                 }
                             }
                         }
