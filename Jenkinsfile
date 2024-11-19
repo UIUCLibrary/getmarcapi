@@ -93,7 +93,7 @@ pipeline {
                                     filename DEFAULT_DOCKER_AGENT_FILENAME
                                     label DEFAULT_DOCKER_AGENT_LABELS
                                     additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
-                                    args '--mount source=sonar-cache-getmarcapi,target=/home/user/.sonar/cache'
+                                    args '--mount source=python-jenkins-tmp-getmarcapi,target=/tmp'
                                 }
                             }
                             environment{
@@ -458,7 +458,7 @@ pipeline {
                                                             image = docker.build(UUID.randomUUID().toString(), '-f ci/docker/python/linux/Dockerfile --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL --build-arg PIP_CACHE_DIR=/.cache/pip .')
                                                         }
                                                         try{
-                                                            image.inside('--mount source=python-tmp-getmarcapi,target=/tmp'){
+                                                            image.inside('--mount source=python-jenkins-tmp-getmarcapi,target=/tmp'){
                                                                 try{
                                                                     sh( label: 'Running Tox',
                                                                         script: """python3 -m venv venv && venv/bin/pip install uv
@@ -515,6 +515,7 @@ pipeline {
                             filename DEFAULT_DOCKER_AGENT_FILENAME
                             label DEFAULT_DOCKER_AGENT_LABELS
                             additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+                            args '--mount source=python-jenkins-tmp-getmarcapi,target=/tmp'
                         }
                     }
                     environment{
@@ -622,6 +623,7 @@ pipeline {
                                         filename DEFAULT_DOCKER_AGENT_FILENAME
                                         label DEFAULT_DOCKER_AGENT_LABELS
                                         additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+                                        args '--mount source=python-jenkins-tmp-getmarcapi,target=/tmp'
                                     }
                                 }
                                 when{
