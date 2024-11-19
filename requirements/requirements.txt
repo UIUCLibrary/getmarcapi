@@ -1,5 +1,4 @@
 flask
 uiucprescon.getmarc2>=0.1.3
-typing-extensions;python_version<"3.8"
 gunicorn
 python-dotenv
