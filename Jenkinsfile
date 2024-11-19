@@ -109,6 +109,9 @@ pipeline {
                             }
                             stages{
                                 stage('Setup'){
+                                    environment{
+                                        UV_PYTHON='3.11'
+                                    }
                                     stages{
                                         stage('Setup Testing Environment'){
                                             steps{
@@ -345,19 +348,19 @@ pipeline {
                                                 if (env.CHANGE_ID){
                                                     sh(
                                                         label: 'Running Sonar Scanner',
-                                                        script: """python3 -m venv venv
-                                                                  venv/bin/pip install --disable-pip-version-check uv
-                                                                  trap "rm -rf venv" EXIT
-                                                                  venv/bin/uvx pysonar-scanner -Dsonar.projectVersion=${props.version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.CHANGE_TARGET}
+                                                        script: """python3 -m venv sonar
+                                                                  sonar/bin/pip install --disable-pip-version-check uv
+                                                                  trap "rm -rf sonar" EXIT
+                                                                  sonar/bin/uvx pysonar-scanner -Dsonar.projectVersion=${props.version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.CHANGE_TARGET}
                                                                """
                                                     )
                                                 } else {
                                                     sh(
                                                         label: 'Running Sonar Scanner',
-                                                        script: """python3 -m venv venv
-                                                                  venv/bin/pip install --disable-pip-version-check uv
-                                                                  trap "rm -rf venv" EXIT
-                                                                  venv/bin/uvx pysonar-scanner -Dsonar.projectVersion=${props.version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.branch.name=${env.BRANCH_NAME}
+                                                        script: """python3 -m venv sonar
+                                                                  sonar/bin/pip install --disable-pip-version-check uv
+                                                                  trap "rm -rf sonar" EXIT
+                                                                  sonar/bin/uvx pysonar-scanner -Dsonar.projectVersion=${props.version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.branch.name=${env.BRANCH_NAME}
                                                                """
                                                     )
                                                 }
@@ -763,7 +766,6 @@ pipeline {
                                         }
                                     }
                                 }
-
                                 stage('Deploy to Production server'){
                                     agent{
                                         label 'linux && docker'
