@@ -3,7 +3,6 @@ library identifier: 'JenkinsPythonHelperLibrary@2024.1.2', retriever: modernSCM(
    remote: 'https://github.com/UIUCLibrary/JenkinsPythonHelperLibrary.git',
    ])
 
-SUPPORTED_LINUX_VERSIONS = ['3.8', '3.9', '3.10', '3.11']
 
 def getPypiConfig() {
     node(){
@@ -43,105 +42,6 @@ def loadHelper(file){
     }
 }
 
-def testPackages(){
-    script{
-//        def packages
-//        node(){
-//            checkout scm
-//            packages = load 'ci/jenkins/scripts/packaging.groovy'
-//        }
-        def linuxTestStages = [:]
-        SUPPORTED_LINUX_VERSIONS.each{ pythonVersion ->
-            def architectures = []
-            if(params.INCLUDE_LINUX_ARM == true){
-                architectures.add("arm64")
-            }
-            if(params.INCLUDE_LINUX_X86_64 == true){
-                architectures.add('x86_64')
-            }
-            architectures.each{ processorArchitecture ->
-                linuxTestStages["Linux-${processorArchitecture} - Python ${pythonVersion}: wheel"] = {
-                    testPythonPkg(
-                        agent: [
-                            dockerfile: [
-                                label: "linux && docker && ${processorArchitecture}",
-                                filename: 'ci/docker/python/tox/Dockerfile',
-                                additionalBuildArgs: '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
-                            ]
-                        ],
-                        retries: 3,
-                        testSetup: {
-                            checkout scm
-                            unstash 'PYTHON_PACKAGES'
-                        },
-                        testCommand: {
-                            findFiles(glob: 'dist/*.whl').each{
-                                timeout(5){
-                                    sh(
-                                        label: 'Running Tox',
-                                        script: "tox --installpkg ${it.path} --workdir /tmp/tox -e py${pythonVersion.replace('.', '')}"
-                                        )
-                                }
-                            }
-                        },
-                        post:[
-                            cleanup: {
-                                cleanWs(
-                                    patterns: [
-                                            [pattern: 'dist/', type: 'INCLUDE'],
-                                            [pattern: '**/__pycache__/', type: 'INCLUDE'],
-                                        ],
-                                    notFailBuild: true,
-                                    deleteDirs: true
-                                )
-                            },
-                            success: {
-                                archiveArtifacts artifacts: 'dist/*.whl'
-                            },
-                        ]
-                    )
-                }
-                linuxTestStages["Linux-${processorArchitecture} - Python ${pythonVersion}: sdist"] = {
-                    testPythonPkg(
-                        agent: [
-                            dockerfile: [
-                                label: "linux && docker && ${processorArchitecture}",
-                                filename: 'ci/docker/python/tox/Dockerfile',
-                                additionalBuildArgs: '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL'
-                            ]
-                        ],
-                        retries: 3,
-                        testSetup: {
-                            checkout scm
-                            unstash 'PYTHON_PACKAGES'
-                        },
-                        testCommand: {
-                            findFiles(glob: 'dist/*.tar.gz').each{
-                                sh(
-                                    label: 'Running Tox',
-                                    script: "tox --installpkg ${it.path} --workdir /tmp/tox -e py${pythonVersion.replace('.', '')}"
-                                    )
-                            }
-                        },
-                        post:[
-                            cleanup: {
-                                cleanWs(
-                                    patterns: [
-                                            [pattern: 'dist/', type: 'INCLUDE'],
-                                            [pattern: '**/__pycache__/', type: 'INCLUDE'],
-                                        ],
-                                    notFailBuild: true,
-                                    deleteDirs: true
-                                )
-                            },
-                        ]
-                    )
-                }
-            }
-        }
-        parallel(linuxTestStages)
-    }
-}
 def startup(){
     parallel(
         [
@@ -169,8 +69,8 @@ pipeline {
         booleanParam(name: 'USE_SONARQUBE', defaultValue: true, description: 'Send data test data to SonarQube')
         credentials(name: 'SONARCLOUD_TOKEN', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', defaultValue: 'sonarcloud_token', required: false)
         booleanParam(name: 'BUILD_PACKAGES', defaultValue: false, description: 'Build Python packages')
-        booleanParam(name: 'INCLUDE_LINUX_ARM', defaultValue: false, description: 'Include ARM architecture for Linux')
-        booleanParam(name: 'INCLUDE_LINUX_X86_64', defaultValue: true, description: 'Include x86_64 architecture for Linux')
+        booleanParam(name: 'INCLUDE_LINUX-ARM64', defaultValue: false, description: 'Include ARM architecture for Linux')
+        booleanParam(name: 'INCLUDE_LINUX-X86_64', defaultValue: true, description: 'Include x86_64 architecture for Linux')
         booleanParam(name: 'TEST_PACKAGES', defaultValue: true, description: 'Test Python packages by installing them and running tests on the installed package')
         booleanParam(name: 'DEPLOY_PYPI', defaultValue: false, description: 'Deploy to pypi')
         booleanParam(name: 'DEPLOY_DOCS', defaultValue: false, description: '')
@@ -484,6 +384,13 @@ pipeline {
                             additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
                         }
                     }
+                    environment{
+                        PIP_CACHE_DIR='/tmp/pipcache'
+                        UV_INDEX_STRATEGY='unsafe-best-match'
+                        UV_TOOL_DIR='/tmp/uvtools'
+                        UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
+                        UV_CACHE_DIR='/tmp/uvcache'
+                    }
                     options{
                         retry(2)
                     }
@@ -491,9 +398,10 @@ pipeline {
                         timeout(5){
                             withEnv(['PIP_NO_CACHE_DIR=off']) {
                                 sh(label: 'Building Python Package',
-                                   script: '''python -m venv venv --upgrade-deps
-                                              venv/bin/pip install build
-                                              venv/bin/python -m build .
+                                   script: '''python -m venv venv
+                                              trap "rm -rf venv" EXIT
+                                              venv/bin/pip install --disable-pip-version-check uv
+                                              venv/bin/uv build
                                               '''
                                    )
                            }
@@ -519,8 +427,98 @@ pipeline {
                     when{
                         equals expected: true, actual: params.TEST_PACKAGES
                     }
-                    steps{
-                        testPackages()
+                    matrix {
+                        axes {
+                            axis {
+                                name 'PYTHON_VERSION'
+                                values  '3.9', '3.10', '3.11'
+                            }
+                            axis {
+                                name 'PACKAGE_TYPE'
+                                values 'wheel', 'sdist'
+                            }
+                            axis {
+                                name 'ARCHITECTURE'
+                                values 'arm64', 'x86_64'
+                            }
+                        }
+                        when{
+                            expression{
+                                params.containsKey("INCLUDE_LINUX-${ARCHITECTURE}".toUpperCase()) && params["INCLUDE_LINUX-${ARCHITECTURE}".toUpperCase()]
+                            }
+                        }
+                        stages {
+                            stage("Test Wheel Package"){
+                                agent {
+                                    docker {
+                                        image 'python'
+                                        label "linux && ${ARCHITECTURE} && docker"
+                                        args '--mount source=python-tmp-getmarapi,target="/tmp"'
+                                    }
+                                }
+                                when{
+                                    expression{PACKAGE_TYPE == "wheel"}
+                                    beforeAgent true
+                                }
+                                environment{
+                                    PIP_CACHE_DIR='/tmp/pipcache'
+                                    UV_INDEX_STRATEGY='unsafe-best-match'
+                                    UV_TOOL_DIR='/tmp/uvtools'
+                                    UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
+                                    UV_CACHE_DIR='/tmp/uvcache'
+                                }
+                                steps{
+                                    unstash 'PYTHON_PACKAGES'
+                                    script{
+                                        def installpkg = findFiles(glob: 'dist/*.whl')[0].path
+                                        sh(
+                                            label: 'Testing with tox',
+                                            script: """python3 -m venv venv
+                                                       trap "rm -rf venv" EXIT
+                                                       venv/bin/pip install --disable-pip-version-check uv
+                                                       trap "rm -rf venv && rm -rf .tox" EXIT
+                                                       venv/bin/uvx --with tox-uv tox --installpkg ${installpkg} -e py${PYTHON_VERSION.replace('.', '')}
+                                                    """
+                                        )
+                                    }
+                                }
+                            }
+                            stage("Test Source Package"){
+                                agent {
+                                    dockerfile {
+                                        filename DEFAULT_DOCKER_AGENT_FILENAME
+                                        label DEFAULT_DOCKER_AGENT_LABELS
+                                        additionalBuildArgs DEFAULT_DOCKER_AGENT_ADDITIONALBUILDARGS
+                                    }
+                                }
+                                when{
+                                    expression{PACKAGE_TYPE == "sdist"}
+                                    beforeAgent true
+                                }
+                                environment{
+                                    PIP_CACHE_DIR='/tmp/pipcache'
+                                    UV_INDEX_STRATEGY='unsafe-best-match'
+                                    UV_TOOL_DIR='/tmp/uvtools'
+                                    UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
+                                    UV_CACHE_DIR='/tmp/uvcache'
+                                }
+                                steps{
+                                    unstash 'PYTHON_PACKAGES'
+                                    script{
+                                        def installpkg = findFiles(glob: 'dist/*.tar.gz')[0].path
+                                        sh(
+                                            label: 'Testing with tox',
+                                            script: """python3 -m venv venv
+                                                       trap "rm -rf venv" EXIT
+                                                       venv/bin/pip install --disable-pip-version-check uv
+                                                       trap "rm -rf venv && rm -rf .tox" EXIT
+                                                       venv/bin/uvx --with tox-uv tox --installpkg ${installpkg} -e py${PYTHON_VERSION.replace('.', '')}
+                                                    """
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
