@@ -96,26 +96,14 @@ def call(){
                                                     sh(
                                                         label: 'Create virtual environment',
                                                         script: '''python3 -m venv bootstrap_uv
-                                                                   bootstrap_uv/bin/pip install uv
+                                                                   bootstrap_uv/bin/pip install --disable-pip-version-check uv
                                                                    bootstrap_uv/bin/uv venv venv
                                                                    . ./venv/bin/activate
-                                                                   bootstrap_uv/bin/uv pip install --index-strategy unsafe-best-match uv
+                                                                   bootstrap_uv/bin/uv sync --active --frozen --group ci
+                                                                   bootstrap_uv/bin/uv pip install --disable-pip-version-check uv
                                                                    rm -rf bootstrap_uv
-                                                                   uv pip install --index-strategy unsafe-best-match -r requirements-dev.txt
                                                                    '''
-                                                   )
-                                                }
-                                            }
-                                            stage('Installing project as editable module'){
-                                                steps{
-                                                    timeout(10){
-                                                        sh(
-                                                            label: 'Install package in development mode',
-                                                            script: '''. ./venv/bin/activate
-                                                                       uv pip install -e .
-                                                                    '''
-                                                        )
-                                                    }
+                                                               )
                                                 }
                                             }
                                             stage('Configuring Testing Environment'){
@@ -432,9 +420,8 @@ def call(){
                                                                     try{
                                                                         sh( label: 'Running Tox',
                                                                             script: """python3 -m venv venv && venv/bin/pip install uv
-                                                                                       . ./venv/bin/activate
-                                                                                       uv python install cpython-${version}
-                                                                                       uvx -p ${version} --with tox-uv tox run -e ${toxEnv}
+                                                                                       ./venv/bin/uv python install cpython-${version}
+                                                                                       ./venv/bin/uv run --frozen --only-group tox --with tox-uv tox run -e ${toxEnv} --runner uv-venv-lock-runner
                                                                                     """
                                                                             )
                                                                     } catch(e) {
@@ -580,7 +567,7 @@ def call(){
                                                            trap "rm -rf venv" EXIT
                                                            venv/bin/pip install --disable-pip-version-check uv
                                                            trap "rm -rf venv && rm -rf .tox" EXIT
-                                                           venv/bin/uvx --with tox-uv tox --installpkg ${installpkg} -e py${PYTHON_VERSION.replace('.', '')}
+                                                           venv/bin/uv run --frozen --no-dev --only-group tox --with tox-uv tox --installpkg ${installpkg} -e py${PYTHON_VERSION.replace('.', '')}
                                                         """
                                             )
                                         }
