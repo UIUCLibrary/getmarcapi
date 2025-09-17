@@ -15,15 +15,19 @@ def getPypiConfig() {
 
 def get_sonarqube_unresolved_issues(report_task_file){
     script{
-        if (! fileExists(report_task_file)){
-            error "File not found ${report_task_file}"
+        if(! fileExists(report_task_file)){
+            error "Could not find ${report_task_file}"
         }
         def props = readProperties  file: report_task_file
-        def response = httpRequest url : props['serverUrl'] + "/api/issues/search?componentKeys=" + props['projectKey'] + '&resolved=no'
+        if(! props['serverUrl'] || ! props['projectKey']){
+            error "Could not find serverUrl or projectKey in ${report_task_file}"
+        }
+        def response = httpRequest url : props['serverUrl'] + '/api/issues/search?componentKeys=' + props['projectKey'] + '&resolved=no'
         def outstandingIssues = readJSON text: response.content
         return outstandingIssues
     }
 }
+
 
 def getVersion(){
     node(){
@@ -287,7 +291,6 @@ def call(){
                                     stage('Sonarcloud Analysis'){
                                         options{
                                             lock('getmarcapi-sonarscanner')
-                                            retry(3)
                                         }
                                         environment{
                                             UV_INDEX_STRATEGY='unsafe-best-match'
@@ -295,6 +298,9 @@ def call(){
                                             UV_TOOL_DIR='/tmp/uvtools'
                                             UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
                                             UV_CACHE_DIR='/tmp/uvcache'
+                                            SONAR_USER_HOME='/tmp/sonar'
+                                            VERSION="${readTOML( file: 'pyproject.toml')['project'].version}"
+
                                         }
                                         when{
                                             allOf{
@@ -317,36 +323,23 @@ def call(){
                                         steps{
                                             milestone 1
                                             script{
-                                                def props = readTOML( file: 'pyproject.toml')['project']
-                                                withSonarQubeEnv(installationName:'sonarcloud', credentialsId: params.SONARCLOUD_TOKEN) {
-                                                    if (env.CHANGE_ID){
+                                                withSonarQubeEnv(installationName: 'sonarcloud', credentialsId: params.SONARCLOUD_TOKEN) {
+                                                    withCredentials([string(credentialsId: params.SONARCLOUD_TOKEN, variable: 'token')]) {
                                                         sh(
                                                             label: 'Running Sonar Scanner',
-                                                            script: """python3 -m venv sonar
-                                                                      sonar/bin/pip install --disable-pip-version-check uv
-                                                                      trap "rm -rf sonar" EXIT
-                                                                      sonar/bin/uvx pysonar-scanner -Dsonar.projectVersion=${props.version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.pullrequest.key=${env.CHANGE_ID} -Dsonar.pullrequest.base=${env.CHANGE_TARGET}
-                                                                   """
-                                                        )
-                                                    } else {
-                                                        sh(
-                                                            label: 'Running Sonar Scanner',
-                                                            script: """python3 -m venv sonar
-                                                                      sonar/bin/pip install --disable-pip-version-check uv
-                                                                      trap "rm -rf sonar" EXIT
-                                                                      sonar/bin/uvx pysonar-scanner -Dsonar.projectVersion=${props.version} -Dsonar.buildString=\"${env.BUILD_TAG}\" -Dsonar.branch.name=${env.BRANCH_NAME}
-                                                                   """
+                                                            script: "./venv/bin/pysonar -t \$token -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/pytest/junit-pytest.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml  -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${env.CHANGE_ID ? '-Dsonar.pullrequest.key=$CHANGE_ID -Dsonar.pullrequest.base=$BRANCH_NAME' : '-Dsonar.branch.name=$BRANCH_NAME' }",
                                                         )
                                                     }
                                                 }
-                                                milestone label: 'sonarcloud'
                                                 timeout(time: 1, unit: 'HOURS') {
-                                                    def sonarqube_result = waitForQualityGate(abortPipeline: false)
-                                                    if (sonarqube_result.status != 'OK') {
-                                                        unstable "SonarQube quality gate: ${sonarqube_result.status}"
-                                                    }
-                                                    def outstandingIssues = get_sonarqube_unresolved_issues('.scannerwork/report-task.txt')
-                                                    writeJSON file: 'reports/sonar-report.json', json: outstandingIssues
+                                                    def sonarqubeResult = waitForQualityGate(abortPipeline: false, credentialsId: params.SONARCLOUD_TOKEN)
+                                                    if (sonarqubeResult.status != 'OK') {
+                                                       unstable "SonarQube quality gate: ${sonarqubeResult.status}"
+                                                   }
+                                                   if(env.BRANCH_IS_PRIMARY){
+                                                       writeJSON file: 'reports/sonar-report.json', json: get_sonarqube_unresolved_issues('.sonar/report-task.txt')
+                                                       recordIssues(tools: [sonarQube(pattern: 'reports/sonar-report.json')])
+                                                   }
                                                 }
                                             }
                                         }
