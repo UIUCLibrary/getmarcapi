@@ -15,17 +15,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip' # caching pip dependencies
-          cache-dependency-path: |
-            requirements/requirements*.txt
-            requirements*.txt
       - name: Install requirements
         run: |
-          pip install wheel
-          pip install tox
-          pip install -r requirements-dev.txt
+          pip install uv
         env:
           PIP_EXTRA_INDEX_URL: ${{vars.PIP_EXTRA_INDEX_URL}}
       - name: Run tox
-        run: tox -e py -vvv
+        run: uv run --group tox --with tox-uv --no-dev tox run -e py -vvv --runner uv-venv-lock-runner
         env:
           PIP_EXTRA_INDEX_URL: ${{vars.PIP_EXTRA_INDEX_URL}}
