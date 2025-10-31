@@ -10,7 +10,7 @@ dependencies = [
     'uiucprescon.getmarc2>=0.1.3',
     'typing-extensions;python_version<"3.8"'
 ]
-requires-python = ">= 3.9"
+requires-python = ">= 3.10"
 readme = "README.rst"
 license = "NCSA"
 authors = [
