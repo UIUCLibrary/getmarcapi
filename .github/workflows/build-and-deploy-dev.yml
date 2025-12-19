@@ -33,7 +33,7 @@ jobs:
       - name: rsync deployments
         uses: burnett01/rsync-deployments@5.2
         with:
-          switches: -avzr --delete --exclude public/system/imports
+          switches: -avzr --delete
           path: .
           remote_path: "${{ env.REMOTE_PATH }}"
           remote_host: "${{ env.REMOTE_HOST }}"
