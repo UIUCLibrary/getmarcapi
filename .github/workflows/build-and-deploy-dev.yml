@@ -1,6 +1,9 @@
 name: Build and Deploy (Docker Linux) - Development
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - 61-add-traefik-config
 
 env:
   REMOTE_HOST: containers-dev.library.illinois.edu
