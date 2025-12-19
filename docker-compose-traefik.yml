@@ -1,0 +1,31 @@
+services:
+  getmarc:
+    build:
+      context: .
+      args:
+        - FQDN=${FQDN}
+        - BACKEND_SERVICE=${BACKEND_SERVICE}
+        - ENTITY_ID=${ENTITY_ID}
+    restart: unless-stopped
+    networks:
+      - proxy
+      - default
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.getmarc-secure.rule=Host(`${FQDN}`)"
+      - "traefik.http.routers.getmarc-secure.entrypoints=websecure"
+      - "traefik.http.routers.getmarc.tls=true"
+      - "traefik.http.services.getmarc.loadbalancer.server.port=443"
+      - "traefik.http.services.getmarc.loadbalancer.server.scheme=https"
+      - "traefik.http.services.getmarc.loadbalancer.serversTransport=${TRAEFIK_SERVER_TRANSPORT}"
+      - "traefik.http.routers.getmarc-secure.middlewares=campus-ips-whitelist@file"
+
+networks:
+  proxy:
+    external: true
