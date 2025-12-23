@@ -15,7 +15,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
-      - "traefik.http.routers.getmarc-secure.rule=Host(`${FQDN}`)"
+      - "traefik.http.routers.getmarc-secure.rule=Host(`${GETMARC_FQDN}`) || Host(`${AVDATABASE_FQDN}`)"
       - "traefik.http.routers.getmarc-secure.entrypoints=websecure"
       - "traefik.http.routers.getmarc-secure.tls=true"
       - "traefik.http.services.getmarc-secure.loadbalancer.server.port=5000"
