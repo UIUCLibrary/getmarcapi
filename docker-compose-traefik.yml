@@ -15,9 +15,19 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
-      - "traefik.http.routers.getmarc-secure.rule=Host(`${FQDN}`)"
+      - "traefik.http.routers.getmarc-secure.rule=Host(`${GETMARC_FQDN}`) || Host(`${AVDATABASE_FQDN}`)"
       - "traefik.http.routers.getmarc-secure.entrypoints=websecure"
       - "traefik.http.routers.getmarc-secure.tls=true"
+
+      # supposedly this shouldn't be needed - wonder
+      # if because started running with just one cert?
+      - "traefik.http.routers.getmarc-secure.tls.domains[0].main=${GETMARC_FQDN}"
+      - "traefik.http.routers.getmarc-secure.tls.domains[0].sans=${AVDATABASE_FQDN}"
+
+      # this also shouldn't be needed if using default certresolver
+      # Iw would think :/
+      - "traefik.http.routers.getmarc-secure.tls.certresolver=letsencrypt"
+
       - "traefik.http.services.getmarc-secure.loadbalancer.server.port=5000"
       - "traefik.http.services.getmarc-secure.loadbalancer.server.scheme=http"
       - "traefik.http.routers.getmarc-secure.middlewares=campus-ips-whitelist@file"
