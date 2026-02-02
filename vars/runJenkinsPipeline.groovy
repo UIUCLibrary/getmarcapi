@@ -87,47 +87,30 @@ def call(){
                                 stages{
                                     stage('Setup'){
                                         environment{
-                                            UV_PYTHON='3.11'
+                                            UV_FROZEN='1'
                                         }
-                                        stages{
-                                            stage('Setup Testing Environment'){
-                                                steps{
-                                                    mineRepository()
-                                                    sh(
-                                                        label: 'Create virtual environment',
-                                                        script: '''python3 -m venv bootstrap_uv
-                                                                   bootstrap_uv/bin/pip install --disable-pip-version-check uv
-                                                                   bootstrap_uv/bin/uv venv venv
-                                                                   . ./venv/bin/activate
-                                                                   bootstrap_uv/bin/uv sync --active --frozen --group ci
-                                                                   bootstrap_uv/bin/uv pip install --disable-pip-version-check uv
-                                                                   rm -rf bootstrap_uv
-                                                                   '''
-                                                               )
-                                                }
-                                            }
-                                            stage('Configuring Testing Environment'){
-                                                steps{
-                                                    sh(
-                                                        label: 'Creating logging and report directories',
-                                                        script: '''
-                                                            mkdir -p logs
-                                                            mkdir -p reports/coverage
-                                                            mkdir -p reports/doctests
-                                                            mkdir -p reports/mypy/html
-                                                        '''
-                                                    )
-                                                }
-                                            }
+                                        steps{
+                                            mineRepository()
+                                            sh(
+                                                label: 'Create virtual environment',
+                                                script: 'uv sync --active --frozen --group ci'
+                                                       )
+                                            sh(
+                                                label: 'Creating logging and report directories',
+                                                script: '''
+                                                    mkdir -p logs
+                                                    mkdir -p reports/coverage
+                                                    mkdir -p reports/doctests
+                                                    mkdir -p reports/mypy/html
+                                                '''
+                                            )
                                         }
                                     }
                                     stage('Running Tests'){
                                         parallel {
                                             stage('PyTest'){
                                                 steps{
-                                                    sh(script: '''. ./venv/bin/activate
-                                                                   coverage run --parallel-mode --source getmarcapi -m pytest --junitxml=reports/pytest/junit-pytest.xml
-                                                               ''',
+                                                    sh(script: 'uv run coverage run --parallel-mode --source getmarcapi -m pytest --junitxml=reports/pytest/junit-pytest.xml',
                                                        returnStatus: true
                                                        )
                                                 }
@@ -164,9 +147,7 @@ def call(){
                                                     catchError(buildResult: 'SUCCESS', message: 'Did not pass all pyDocStyle tests', stageResult: 'UNSTABLE') {
                                                         sh(
                                                             label: 'Run pydocstyle',
-                                                            script: '''. ./venv/bin/activate
-                                                                       pydocstyle getmarcapi > reports/pydocstyle-report.txt
-                                                                    '''
+                                                            script: 'uv run pydocstyle getmarcapi > reports/pydocstyle-report.txt'
                                                         )
                                                     }
                                                 }
@@ -180,9 +161,7 @@ def call(){
                                                 steps{
                                                     catchError(buildResult: 'SUCCESS', message: 'mypy found issues', stageResult: 'UNSTABLE') {
                                                         // Note: this misses the uiucprescon.getmarc2 namespace package stubs because of this issue https://github.com/python/mypy/issues/10045
-                                                        sh '''. ./venv/bin/activate
-                                                              mypy -p getmarcapi --ignore-missing-imports --html-report reports/mypy/html/ > logs/mypy.log
-                                                           '''
+                                                        sh 'uv run mypy -p getmarcapi --ignore-missing-imports --html-report reports/mypy/html/ > logs/mypy.log'
                                                     }
                                                 }
                                                 post {
@@ -197,9 +176,7 @@ def call(){
                                                     catchError(buildResult: 'SUCCESS', message: 'Bandit found issues', stageResult: 'UNSTABLE') {
                                                         sh(
                                                             label: 'Running bandit',
-                                                            script: '''. ./venv/bin/activate
-                                                                       bandit --format json --output reports/bandit-report.json --recursive getmarcapi || bandit -f html --recursive getmarcapi --output reports/bandit-report.html
-                                                                    '''
+                                                            script: 'uv run bandit --format json --output reports/bandit-report.json --recursive getmarcapi || bandit -f html --recursive getmarcapi --output reports/bandit-report.html'
                                                         )
                                                     }
                                                 }
@@ -225,17 +202,13 @@ def call(){
                                                     catchError(buildResult: 'SUCCESS', message: 'Pylint found issues', stageResult: 'UNSTABLE') {
                                                         tee('reports/pylint.txt'){
                                                             sh(
-                                                                script: '''. ./venv/bin/activate
-                                                                           pylint getmarcapi -r n --persistent=n --verbose --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}"
-                                                                           ''',
+                                                                script: 'uv run pylint getmarcapi -r n --persistent=n --verbose --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}"',
                                                                 label: 'Running pylint'
                                                             )
                                                         }
                                                     }
                                                     sh(label: 'Running pylint for sonarqube',
-                                                        script: '''. ./venv/bin/activate
-                                                                   pylint getmarcapi  -r n --persistent=n --msg-template="{path}:{module}:{line}: [{msg_id}({symbol}), {obj}] {msg}" > reports/pylint_issues.txt
-                                                                ''',
+                                                        script: 'uv run pylint getmarcapi  -r n --persistent=n --msg-template="{path}:{module}:{line}: [{msg_id}({symbol}), {obj}] {msg}" > reports/pylint_issues.txt',
                                                         returnStatus: true
                                                     )
                                                 }
@@ -250,8 +223,7 @@ def call(){
                                                     catchError(buildResult: 'SUCCESS', message: 'Flake8 found issues', stageResult: 'UNSTABLE') {
                                                         sh(label: 'Running Flake8',
                                                            script: '''mkdir -p logs
-                                                                      . ./venv/bin/activate
-                                                                      flake8 getmarcapi --tee --output-file=logs/flake8.log
+                                                                      uv run flake8 getmarcapi --tee --output-file=logs/flake8.log
                                                                    '''
                                                            )
                                                     }
@@ -267,9 +239,8 @@ def call(){
                                             always{
                                                 sh(
                                                     label: 'Combining coverage results',
-                                                    script: '''. ./venv/bin/activate
-                                                               coverage combine
-                                                               coverage xml -o reports/coverage.xml
+                                                    script: '''uv run coverage combine
+                                                               uv run coverage xml -o reports/coverage.xml
                                                                '''
                                                 )
                                                 recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'reports/coverage.xml']])
@@ -315,7 +286,7 @@ def call(){
                                                     withCredentials([string(credentialsId: params.SONARCLOUD_TOKEN, variable: 'token')]) {
                                                         sh(
                                                             label: 'Running Sonar Scanner',
-                                                            script: "./venv/bin/pysonar -t \$token -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/pytest/junit-pytest.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml  -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${env.CHANGE_ID ? '-Dsonar.pullrequest.key=$CHANGE_ID -Dsonar.pullrequest.base=$BRANCH_NAME' : '-Dsonar.branch.name=$BRANCH_NAME' }",
+                                                            script: "uv run pysonar -t \$token -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/pytest/junit-pytest.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml  -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${env.CHANGE_ID ? '-Dsonar.pullrequest.key=$CHANGE_ID -Dsonar.pullrequest.base=$BRANCH_NAME' : '-Dsonar.branch.name=$BRANCH_NAME' }",
                                                         )
                                                     }
                                                 }
@@ -374,13 +345,12 @@ def call(){
                                     script{
                                         def envs = []
                                         node('docker && linux'){
-                                            docker.image('python').inside('--mount source=python-tmp-getmarcapi,target=/tmp'){
+                                            docker.image('ghcr.io/astral-sh/uv:debian').inside('--mount source=python-tmp-getmarcapi,target=/tmp'){
                                                 try{
                                                     checkout scm
-                                                    sh(script: 'python3 -m venv venv && venv/bin/pip install --disable-pip-version-check uv')
                                                     envs = sh(
                                                         label: 'Get tox environments',
-                                                        script: './venv/bin/uvx --quiet --with tox-uv tox list -d --no-desc',
+                                                        script: 'uv run --quiet --only-group tox --with tox-uv --frozen tox list -d --no-desc',
                                                         returnStdout: true,
                                                     ).trim().split('\n')
                                                 } finally{
@@ -410,17 +380,10 @@ def call(){
                                                                 image.inside('--mount source=python-jenkins-tmp-getmarcapi,target=/tmp'){
                                                                     try{
                                                                         sh( label: 'Running Tox',
-                                                                            script: """python3 -m venv venv && venv/bin/pip install uv
-                                                                                       ./venv/bin/uv python install cpython-${version}
-                                                                                       ./venv/bin/uv run --frozen --only-group tox --with tox-uv tox run -e ${toxEnv} --runner uv-venv-lock-runner
+                                                                            script: """uv python install cpython-${version}
+                                                                                       uv run --frozen --only-group tox --with tox-uv tox run -e ${toxEnv} --runner uv-venv-lock-runner
                                                                                     """
                                                                             )
-                                                                    } catch(e) {
-                                                                        sh(script: '''. ./venv/bin/activate
-                                                                              uv python list
-                                                                              '''
-                                                                                )
-                                                                        throw e
                                                                     } finally{
                                                                         cleanWs(
                                                                             patterns: [
@@ -480,11 +443,7 @@ def call(){
                             timeout(5){
                                 withEnv(['PIP_NO_CACHE_DIR=off']) {
                                     sh(label: 'Building Python Package',
-                                       script: '''python -m venv venv
-                                                  trap "rm -rf venv" EXIT
-                                                  venv/bin/pip install --disable-pip-version-check uv
-                                                  venv/bin/uv build
-                                                  '''
+                                       script: 'uv build'
                                        )
                                }
                             }
@@ -539,7 +498,7 @@ def call(){
                                 stage('Test Wheel Package'){
                                     agent {
                                         docker {
-                                            image 'python'
+                                            image 'ghcr.io/astral-sh/uv:debian'
                                             label "linux && ${ARCHITECTURE} && docker"
                                             args '--mount source=python-tmp-getmarapi,target="/tmp"'
                                         }
@@ -554,12 +513,7 @@ def call(){
                                             def installpkg = findFiles(glob: 'dist/*.whl')[0].path
                                             sh(
                                                 label: 'Testing with tox',
-                                                script: """python3 -m venv venv
-                                                           trap "rm -rf venv" EXIT
-                                                           venv/bin/pip install --disable-pip-version-check uv
-                                                           trap "rm -rf venv && rm -rf .tox" EXIT
-                                                           venv/bin/uv run --frozen --no-dev --only-group tox --with tox-uv tox --installpkg ${installpkg} -e py${PYTHON_VERSION.replace('.', '')}
-                                                        """
+                                                script: "uv run --frozen --no-dev --only-group tox --with tox-uv tox --installpkg ${installpkg} -e py${PYTHON_VERSION.replace('.', '')}"
                                             )
                                         }
                                     }
@@ -583,12 +537,7 @@ def call(){
                                             def installpkg = findFiles(glob: 'dist/*.tar.gz')[0].path
                                             sh(
                                                 label: 'Testing with tox',
-                                                script: """python3 -m venv venv
-                                                           trap "rm -rf venv" EXIT
-                                                           venv/bin/pip install --disable-pip-version-check uv
-                                                           trap "rm -rf venv && rm -rf .tox" EXIT
-                                                           venv/bin/uvx --with tox-uv tox --installpkg ${installpkg} -e py${PYTHON_VERSION.replace('.', '')}
-                                                        """
+                                                script: "uv run --only-group tox --with tox-uv --frozen tox --installpkg ${installpkg} -e py${PYTHON_VERSION.replace('.', '')}"
                                             )
                                         }
                                     }
