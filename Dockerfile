@@ -1,4 +1,4 @@
-FROM python:3.11-slim AS base_image
+FROM python:3.14-slim AS base_image
 
 FROM base_image AS builder
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
