@@ -32,7 +32,7 @@ def get_sonarqube_unresolved_issues(report_task_file){
 def getVersion(){
     node(){
         checkout scm
-        return readTOML( file: 'pyproject.toml')['project']
+        return readTOML( file: 'pyproject.toml')['project']['version']
     }
 }
 
@@ -51,7 +51,7 @@ def call(){
             booleanParam(name: 'TEST_PACKAGES', defaultValue: true, description: 'Test Python packages by installing them and running tests on the installed package')
             booleanParam(name: 'DEPLOY_PYPI', defaultValue: false, description: 'Deploy to pypi')
             booleanParam(name: 'DEPLOY_DOCS', defaultValue: false, description: '')
-            booleanParam(name: 'DEPLOY_TO_PRODUCTION', defaultValue: false, description: 'Deploy to Production Server')
+            booleanParam(name: 'DEPLOY_DOCKER_IMAGE', defaultValue: false, description: 'Create and deploy docker image to Docker registry')
         }
         stages {
             stage('Building and Testing'){
@@ -579,15 +579,18 @@ def call(){
                 when{
                     anyOf {
                         equals expected: true, actual: params.DEPLOY_PYPI
-                        equals expected: true, actual: params.DEPLOY_TO_PRODUCTION
+                        equals expected: true, actual: params.DEPLOY_DOCKER_IMAGE
                     }
+                }
+                options{
+                    lock('deploy_getmarcapi')
                 }
                 stages{
                     stage('Additional Deploy') {
                         when{
                             anyOf {
                                 equals expected: true, actual: params.DEPLOY_PYPI
-                                equals expected: true, actual: params.DEPLOY_TO_PRODUCTION
+                                equals expected: true, actual: params.DEPLOY_DOCKER_IMAGE
                             }
                         }
                         parallel{
@@ -641,7 +644,7 @@ def call(){
                             }
                             stage('Deploy Docker'){
                                 when{
-                                    equals expected: true, actual: params.DEPLOY_TO_PRODUCTION
+                                    equals expected: true, actual: params.DEPLOY_DOCKER_IMAGE
                                     beforeAgent true
                                     beforeInput true
                                 }
@@ -659,65 +662,62 @@ def call(){
                                         }
                                         steps{
                                             script{
-                                                withCredentials([string(credentialsId: 'ALMA_API_KEY', variable: 'API_KEY')]) {
-                                                    writeFile(
-                                                        file: 'api.cfg',
-                                                        text: '''[ALMA_API]
-                                                                 API_DOMAIN=https://api-na.hosted.exlibrisgroup.com
-                                                                 API_KEY=${API_KEY}
-                                                                 '''
-                                                        )
-                                                }
+                                                def registryUrl
+                                                def localImageName
+                                                def build_args
+                                                def remoteRegistryImageName
                                                 configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
-                                                    def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
-                                                    def build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(' ')
-                                                    docker.withRegistry(CONFIG['docker']['server']['registry'], 'jenkins-nexus'){
-                                                        def dockerImage = docker.build("${IMAGE_NAME}:${DOCKER_TAG}", "${build_args} .")
-                                                        dockerImage.push()
-                                                        dockerImage.push('latest')
+                                                    try{
+                                                        def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
+                                                        build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(' ')
+                                                        registryUrl = CONFIG['docker']['server']['registry']
+                                                        remoteRegistryImageName = "${registryUrl.replace('http://', '').replace('https://', '')}/${IMAGE_NAME}:${DOCKER_TAG}"
+                                                        localImageName = "${IMAGE_NAME}:${DOCKER_TAG}"
+
+                                                    } catch(e){
+                                                        error """======================================================
+                                                                 Config file is not valid
+                                                                 ------------------------------------------------------
+                                                                 Details:
+
+                                                                 ${e.message}
+                                                                 ------------------------------------------------------
+                                                                 The config file must be a JSON file and be in the following format.
+
+                                                                 {
+                                                                   "deploy": {
+                                                                     "docker": {
+                                                                       "build": {
+                                                                         "buildArgs": []
+                                                                       },
+                                                                       "server": {
+                                                                         "registry": "FILL THIS OUT WITH YOUR DOCKER REGISTRY URL"
+                                                                       }
+                                                                     }
+                                                                   }
+                                                                 }
+
+                                                                 ======================================================
+                                                              """
                                                     }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    stage('Deploy to Production server'){
-                                        agent{
-                                            label 'linux && docker'
-                                        }
-                                        input {
-                                            message 'Deploy to live server?'
-                                            parameters {
-                                                string defaultValue: 'getmarc2', description: 'Name of Docker container to use', name: 'CONTAINER_NAME', trim: true
-                                                booleanParam defaultValue: true, description: 'Remove any containers with the same name first', name: 'REMOVE_EXISTING_CONTAINER'
-                                            }
-                                        }
-                                        options{
-                                            timeout(time: 1, unit: 'DAYS')
-                                            retry(3)
-                                        }
-                                        steps{
-                                            script{
-                                                configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
-                                                    def CONFIG = readJSON(file: CONFIG_FILE).deploy
-                                                    docker.withServer(CONFIG.docker.server.apiUrl, 'DOCKER_TYKO'){
-                                                        if(REMOVE_EXISTING_CONTAINER == true){
-                                                            sh(
-                                                               label:"Stopping ${CONTAINER_NAME} if exists",
-                                                               script: "docker stop ${CONTAINER_NAME}",
-                                                               returnStatus: true
-                                                            )
-                                                        }
-                                                        docker.withRegistry(CONFIG.docker.server.registry, 'jenkins-nexus'){
-                                                            def imageName =  CONFIG.docker.server.registry.replace('http://', '') + "/${IMAGE_NAME}:${DOCKER_TAG}"
-                                                            def containerPortsArg = CONFIG.docker.container.ports.collect{"-p ${it}"}.join(' ')
-                                                            docker.image(imageName).run("${containerPortsArg} --name ${CONTAINER_NAME} --rm")
-                                                        }
+                                                    docker.withRegistry(registryUrl, 'jenkins-nexus'){
+                                                        def dockerImage = docker.build(localImageName, "${build_args} .")
+                                                        sh(label: 'Uploading docker images to registry',
+                                                           script: """docker tag ${localImageName} ${remoteRegistryImageName}
+                                                                      docker push ${remoteRegistryImageName}
+                                                                   """
+                                                        )
                                                     }
                                                 }
                                             }
                                         }
                                     }
                                 }
+                            }
+                        }
+                        post{
+                            always{
+                                milestone 2
                             }
                         }
                     }
