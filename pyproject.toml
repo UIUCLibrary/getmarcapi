@@ -21,6 +21,7 @@ maintainers = [
 ]
 description = "Provide MARC XML data"
 [dependency-groups]
+audit-dependencies = ['uv-secure']
 deploy = ['gunicorn', 'python-dotenv']
 test = ['pytest']
 tox = ["tox"]
@@ -39,6 +40,7 @@ dev = [
     {include-group = "publish"},
     {include-group = "test"},
     {include-group = "tox"},
+    {include-group = "audit-dependencies"},
 ]
 ci = ["pysonar", {include-group = "dev"}]
 
