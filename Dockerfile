@@ -42,5 +42,6 @@ EXPOSE 5000
 COPY api.cfg /app/settings.cfg
 ENV GETMARCAPI_SETTINGS=/app/settings.cfg
 RUN  ./.venv/bin/python -m getmarcapi --check
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD curl -f http://localhost:5000 || exit 1
 CMD ./.venv/bin/gunicorn getmarcapi.app:app --bind 0.0.0.0:5000 --log-level=debug
 
