@@ -79,6 +79,7 @@ def call(){
                                     UV_TOOL_DIR='/tmp/uvtools'
                                     UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
                                     UV_CACHE_DIR='/tmp/uvcache'
+                                    UV_PYTHON='3.14+gil'
                                 }
                                 when{
                                     equals expected: true, actual: params.RUN_CHECKS
