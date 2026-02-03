@@ -70,7 +70,7 @@ def call(){
                                         filename 'ci/docker/python/linux/Dockerfile'
                                         label 'linux && docker && x86'
                                         additionalBuildArgs '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL --build-arg PIP_CACHE_DIR=/.cache/pip'
-                                        args '--mount source=python-jenkins-tmp-getmarcapi,target=/tmp'
+                                        args '--mount source=python-jenkins-tmp-getmarcapi,target=/tmp --mount type=tmpfs,dst=/.config --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv'
                                     }
                                 }
                                 environment{
@@ -406,11 +406,11 @@ def call(){
                                                                 image = docker.build(UUID.randomUUID().toString(), '-f ci/docker/python/linux/Dockerfile --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL --build-arg PIP_CACHE_DIR=/.cache/pip .')
                                                             }
                                                             try{
-                                                                image.inside('--mount source=python-jenkins-tmp-getmarcapi,target=/tmp'){
+                                                                image.inside('--mount source=python-jenkins-tmp-getmarcapi,target=/tmp --mount type=tmpfs,dst=/.local --tmpfs /tox_workdir:exec'){
                                                                     try{
                                                                         sh( label: 'Running Tox',
                                                                             script: """uv python install cpython-${version}
-                                                                                       uv run --frozen --only-group tox --with tox-uv tox run -e ${toxEnv} --runner uv-venv-lock-runner
+                                                                                       uv run --frozen --only-group tox --with tox-uv tox run -e ${toxEnv} --runner uv-venv-lock-runner --workdir /tox_workdir
                                                                                     """
                                                                             )
                                                                     } finally{
@@ -529,7 +529,7 @@ def call(){
                                         docker {
                                             image 'ghcr.io/astral-sh/uv:debian'
                                             label "linux && ${ARCHITECTURE} && docker"
-                                            args '--mount source=python-tmp-getmarapi,target="/tmp"'
+                                            args '--mount source=python-tmp-getmarapi,target="/tmp" --tmpfs /tox_workdir:exec -e UV_PROJECT_ENVIRONMENT=/tox_workdir/.venv'
                                         }
                                     }
                                     when{
@@ -542,7 +542,7 @@ def call(){
                                             def installpkg = findFiles(glob: 'dist/*.whl')[0].path
                                             sh(
                                                 label: 'Testing with tox',
-                                                script: "uv run --frozen --no-dev --only-group tox --with tox-uv tox --installpkg ${installpkg} -e py${PYTHON_VERSION.replace('.', '')}"
+                                                script: "uv run --frozen --no-dev --only-group tox --with tox-uv tox --workdir /tox_workdir/tox --installpkg ${installpkg} -e py${PYTHON_VERSION.replace('.', '')}"
                                             )
                                         }
                                     }
@@ -553,7 +553,7 @@ def call(){
                                             filename 'ci/docker/python/linux/Dockerfile'
                                             label 'linux && docker && x86'
                                             additionalBuildArgs '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL --build-arg PIP_CACHE_DIR=/.cache/pip'
-                                            args '--mount source=python-jenkins-tmp-getmarcapi,target=/tmp'
+                                            args '--mount source=python-jenkins-tmp-getmarcapi,target=/tmp --tmpfs /tox_workdir:exec -e UV_PROJECT_ENVIRONMENT=/tox_workdir/.venv'
                                         }
                                     }
                                     when{
@@ -566,7 +566,7 @@ def call(){
                                             def installpkg = findFiles(glob: 'dist/*.tar.gz')[0].path
                                             sh(
                                                 label: 'Testing with tox',
-                                                script: "uv run --only-group tox --with tox-uv --frozen tox --installpkg ${installpkg} -e py${PYTHON_VERSION.replace('.', '')}"
+                                                script: "uv run --only-group tox --with tox-uv --frozen tox --workdir /tox_workdir/tox --installpkg ${installpkg} -e py${PYTHON_VERSION.replace('.', '')}"
                                             )
                                         }
                                     }
