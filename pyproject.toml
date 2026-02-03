@@ -50,6 +50,7 @@ Download = "https://github.com/UIUCLibrary/"
 [tool.setuptools]
 packages = [
     "getmarcapi",
+    "getmarcapi.templates"
 ]
 include-package-data = true
 zip-safe = true
