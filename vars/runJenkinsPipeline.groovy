@@ -597,10 +597,9 @@ def call(){
                         parallel{
                             stage('Deploy to pypi') {
                                 agent {
-                                    dockerfile {
-                                        filename 'ci/docker/python/linux/Dockerfile'
-                                        label 'linux && docker && x86'
-                                        additionalBuildArgs '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL --build-arg PIP_CACHE_DIR=/.cache/pip'
+                                    docker{
+                                        image 'ghcr.io/astral-sh/uv:debian'
+                                        args '--mount source=python-jenkins-tmp-getmarcapi,target=/tmp --tmpfs /.cache/uv:exec --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv'
                                     }
                                 }
                                 when{
@@ -626,11 +625,22 @@ def call(){
                                 }
                                 steps{
                                     unstash 'PYTHON_PACKAGES'
-                                    pypiUpload(
-                                        credentialsId: 'jenkins-nexus',
-                                        repositoryUrl: SERVER_URL,
-                                        glob: 'dist/*'
-                                        )
+                                    withEnv(["TWINE_REPOSITORY_URL=${SERVER_URL}",]){
+                                        withCredentials(
+                                            [
+                                                usernamePassword(
+                                                    credentialsId: 'jenkins-nexus',
+                                                    passwordVariable: 'TWINE_PASSWORD',
+                                                    usernameVariable: 'TWINE_USERNAME'
+                                                )
+                                            ]
+                                        ){
+                                            sh(
+                                                label: 'Uploading to pypi',
+                                                script: 'uv run --only-group=publish twine upload --disable-progress-bar --non-interactive dist/*'
+                                            )
+                                        }
+                                    }
                                 }
                                 post{
                                     cleanup{
