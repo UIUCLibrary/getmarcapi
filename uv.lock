@@ -600,7 +600,7 @@ wheels = [
 
 [[package]]
 name = "getmarcapi"
-version = "0.0.5"
+version = "0.0.6.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "flask" },
