@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "getmarcapi"
-version = "0.0.5.dev0"
+version = "0.0.5"
 dependencies = [
     'flask',
     'uiucprescon.getmarc2>=0.1.5',
