@@ -6,7 +6,7 @@ FROM python:${PYTHON_VERSION} AS base_image
 #==============================================================================
 FROM base_image
 RUN apt-get update &&  \
-    apt-get install -y npm &&  \
+    apt-get install -y --no-install-recommends npm libenchant-2-dev &&  \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
