@@ -107,6 +107,20 @@ def call(){
                                             )
                                         }
                                     }
+                                    stage('Building Documentation'){
+                                        steps {
+                                            catchError(buildResult: 'UNSTABLE', message: 'Building Sphinx documentation has issues', stageResult: 'UNSTABLE') {
+                                                sh(label: 'Running Sphinx',
+                                                    script: 'uv run -m sphinx -b html docs build/docs/html -d build/docs/doctrees -v -w logs/build_sphinx.log -W --keep-going'
+                                                )
+                                            }
+                                        }
+                                        post{
+                                            always {
+                                                recordIssues(tools: [sphinxBuild(name: 'Sphinx Documentation Build', pattern: 'logs/build_sphinx.log', id: 'sphinx_build')])
+                                            }
+                                        }
+                                    }
                                     stage('Running Tests'){
                                         parallel {
                                             stage('PyTest'){
@@ -126,23 +140,23 @@ def call(){
                                                     recordIssues(tools: [taskScanner(highTags: 'FIXME', includePattern: 'getmarcapi"F/**/*.py', normalTags: 'TODO')])
                                                 }
                                             }
-                                            //   stage('Doctest'){
-                                            //       steps {
-                                            //           sh 'coverage run --parallel-mode --source getmarcapi -m sphinx -b doctest -d build/docs/doctrees docs reports/doctest -w logs/doctest.log'
-                                            //       }
-                                            //       post{
-                                            //           always {
-                                            //               recordIssues(tools: [sphinxBuild(name: 'Sphinx Doctest', pattern: 'logs/doctest.log', id: 'doctest')])
-                                            //           }
-                                            //       }
-                                            //   }
-                                            //   stage('Documentation Spell check'){
-                                            //       steps {
-                                            //           catchError(buildResult: 'SUCCESS', message: 'Found spelling issues in documentation', stageResult: 'UNSTABLE') {
-                                            //               sh 'python -m sphinx docs reports/doc_spellcheck -b spelling -d build/docs/doctrees'
-                                            //           }
-                                            //       }
-                                            //   }
+                                              stage('Doctest'){
+                                                  steps {
+                                                      sh 'uv run coverage run --parallel-mode --source getmarcapi -m sphinx -b doctest -d build/docs/doctrees docs reports/doctest -w logs/doctest.log'
+                                                  }
+                                                  post{
+                                                      always {
+                                                          recordIssues(tools: [sphinxBuild(name: 'Sphinx Doctest', pattern: 'logs/doctest.log', id: 'doctest')])
+                                                      }
+                                                  }
+                                              }
+                                              stage('Documentation Spell check'){
+                                                  steps {
+                                                      catchError(buildResult: 'SUCCESS', message: 'Found spelling issues in documentation', stageResult: 'UNSTABLE') {
+                                                          sh 'uv run -m sphinx docs reports/doc_spellcheck -b spelling -d build/docs/doctrees'
+                                                      }
+                                                  }
+                                              }
                                             stage('pyDocStyle'){
                                                 steps{
                                                     catchError(buildResult: 'SUCCESS', message: 'Did not pass all pyDocStyle tests', stageResult: 'UNSTABLE') {
