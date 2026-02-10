@@ -35,7 +35,56 @@ def getVersion(){
         return readTOML( file: 'pyproject.toml')['project']['version']
     }
 }
+def deployDocker(imageName, dockerTag){
+    script{
+        def registryUrl
+        def localImageName
+        def build_args
+        def remoteRegistryImageName
+        configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
+            try{
+                def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
+                build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(' ')
+                registryUrl = CONFIG['docker']['server']['registry']
+                remoteRegistryImageName = "${registryUrl.replace('http://', '').replace('https://', '')}/${imageName}:${dockerTag}"
+                localImageName = "${imageName}:${dockerTag}"
+            } catch(e){
+                error """======================================================
+                         Config file is not valid
+                         ------------------------------------------------------
+                         Details:
 
+                         ${e.message}
+                         ------------------------------------------------------
+                         The config file must be a JSON file and be in the following format.
+
+                         {
+                           "deploy": {
+                             "docker": {
+                               "build": {
+                                 "buildArgs": []
+                               },
+                               "server": {
+                                 "registry": "FILL THIS OUT WITH YOUR DOCKER REGISTRY URL"
+                               }
+                             }
+                           }
+                         }
+
+                         ======================================================
+                      """
+            }
+            docker.withRegistry(registryUrl, 'jenkins-nexus'){
+                def dockerImage = docker.build(localImageName, "${build_args} .")
+                sh(label: 'Uploading docker images to registry',
+                   script: """docker tag ${localImageName} ${remoteRegistryImageName}
+                              docker push ${remoteRegistryImageName}
+                           """
+                )
+            }
+        }
+    }
+}
 
 def call(){
     pipeline {
@@ -107,6 +156,26 @@ def call(){
                                             )
                                         }
                                     }
+                                    stage('Building Documentation'){
+                                        steps {
+                                            catchError(buildResult: 'UNSTABLE', message: 'Building Sphinx documentation has issues', stageResult: 'UNSTABLE') {
+                                                sh(label: 'Running Sphinx',
+                                                    script: 'uv run -m sphinx -b html docs build/docs/html -d build/docs/doctrees -v -w logs/build_sphinx.log -W --keep-going'
+                                                )
+                                            }
+                                            publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'build/docs/html', reportFiles: 'index.html', reportName: 'Documentation', reportTitles: ''])
+                                            script{
+                                                def props = readTOML( file: 'pyproject.toml')['project']
+                                                zip archive: true, dir: 'build/docs/html', glob: '', zipFile: "dist/${props.name}-${props.version}.doc.zip"
+                                            }
+                                            stash includes: 'dist/*.doc.zip,build/docs/html/**', name: 'DOCS_ARCHIVE'
+                                        }
+                                        post{
+                                            always {
+                                                recordIssues(tools: [sphinxBuild(name: 'Sphinx Documentation Build', pattern: 'logs/build_sphinx.log', id: 'sphinx_build')])
+                                            }
+                                        }
+                                    }
                                     stage('Running Tests'){
                                         parallel {
                                             stage('PyTest'){
@@ -126,23 +195,23 @@ def call(){
                                                     recordIssues(tools: [taskScanner(highTags: 'FIXME', includePattern: 'getmarcapi"F/**/*.py', normalTags: 'TODO')])
                                                 }
                                             }
-                                            //   stage('Doctest'){
-                                            //       steps {
-                                            //           sh 'coverage run --parallel-mode --source getmarcapi -m sphinx -b doctest -d build/docs/doctrees docs reports/doctest -w logs/doctest.log'
-                                            //       }
-                                            //       post{
-                                            //           always {
-                                            //               recordIssues(tools: [sphinxBuild(name: 'Sphinx Doctest', pattern: 'logs/doctest.log', id: 'doctest')])
-                                            //           }
-                                            //       }
-                                            //   }
-                                            //   stage('Documentation Spell check'){
-                                            //       steps {
-                                            //           catchError(buildResult: 'SUCCESS', message: 'Found spelling issues in documentation', stageResult: 'UNSTABLE') {
-                                            //               sh 'python -m sphinx docs reports/doc_spellcheck -b spelling -d build/docs/doctrees'
-                                            //           }
-                                            //       }
-                                            //   }
+                                              stage('Doctest'){
+                                                  steps {
+                                                      sh 'uv run coverage run --parallel-mode --source getmarcapi -m sphinx -b doctest -d build/docs/doctrees docs reports/doctest -w logs/doctest.log'
+                                                  }
+                                                  post{
+                                                      always {
+                                                          recordIssues(tools: [sphinxBuild(name: 'Sphinx Doctest', pattern: 'logs/doctest.log', id: 'doctest')])
+                                                      }
+                                                  }
+                                              }
+                                              stage('Documentation Spell check'){
+                                                  steps {
+                                                      catchError(buildResult: 'SUCCESS', message: 'Found spelling issues in documentation', stageResult: 'UNSTABLE') {
+                                                          sh 'uv run -m sphinx docs reports/doc_spellcheck -b spelling -d build/docs/doctrees'
+                                                      }
+                                                  }
+                                              }
                                             stage('pyDocStyle'){
                                                 steps{
                                                     catchError(buildResult: 'SUCCESS', message: 'Did not pass all pyDocStyle tests', stageResult: 'UNSTABLE') {
@@ -499,7 +568,6 @@ def call(){
                         }
                         environment{
                             PIP_CACHE_DIR='/tmp/pipcache'
-                            UV_INDEX_STRATEGY='unsafe-best-match'
                             UV_TOOL_DIR='/tmp/uvtools'
                             UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
                             UV_CACHE_DIR='/tmp/uvcache'
@@ -539,10 +607,9 @@ def call(){
                                     steps{
                                         unstash 'PYTHON_PACKAGES'
                                         script{
-                                            def installpkg = findFiles(glob: 'dist/*.whl')[0].path
                                             sh(
                                                 label: 'Testing with tox',
-                                                script: "uv run --frozen --no-dev --only-group tox --with tox-uv tox --workdir /tox_workdir/tox --installpkg ${installpkg} -e py${PYTHON_VERSION.replace('.', '')}"
+                                                script: "uv run --frozen --no-dev --only-group tox --with tox-uv tox --workdir /tox_workdir/tox --installpkg ${findFiles(glob: 'dist/*.whl')[0].path} -e py${PYTHON_VERSION.replace('.', '')}"
                                             )
                                         }
                                     }
@@ -563,10 +630,9 @@ def call(){
                                     steps{
                                         unstash 'PYTHON_PACKAGES'
                                         script{
-                                            def installpkg = findFiles(glob: 'dist/*.tar.gz')[0].path
                                             sh(
                                                 label: 'Testing with tox',
-                                                script: "uv run --only-group tox --with tox-uv --frozen tox --workdir /tox_workdir/tox --installpkg ${installpkg} -e py${PYTHON_VERSION.replace('.', '')}"
+                                                script: "uv run --only-group tox --with tox-uv --frozen tox --workdir /tox_workdir/tox --installpkg ${findFiles(glob: 'dist/*.tar.gz')[0].path} -e py${PYTHON_VERSION.replace('.', '')}"
                                             )
                                         }
                                     }
@@ -672,55 +738,7 @@ def call(){
                                             label 'linux && docker && x86'
                                         }
                                         steps{
-                                            script{
-                                                def registryUrl
-                                                def localImageName
-                                                def build_args
-                                                def remoteRegistryImageName
-                                                configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
-                                                    try{
-                                                        def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
-                                                        build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(' ')
-                                                        registryUrl = CONFIG['docker']['server']['registry']
-                                                        remoteRegistryImageName = "${registryUrl.replace('http://', '').replace('https://', '')}/${IMAGE_NAME}:${DOCKER_TAG}"
-                                                        localImageName = "${IMAGE_NAME}:${DOCKER_TAG}"
-
-                                                    } catch(e){
-                                                        error """======================================================
-                                                                 Config file is not valid
-                                                                 ------------------------------------------------------
-                                                                 Details:
-
-                                                                 ${e.message}
-                                                                 ------------------------------------------------------
-                                                                 The config file must be a JSON file and be in the following format.
-
-                                                                 {
-                                                                   "deploy": {
-                                                                     "docker": {
-                                                                       "build": {
-                                                                         "buildArgs": []
-                                                                       },
-                                                                       "server": {
-                                                                         "registry": "FILL THIS OUT WITH YOUR DOCKER REGISTRY URL"
-                                                                       }
-                                                                     }
-                                                                   }
-                                                                 }
-
-                                                                 ======================================================
-                                                              """
-                                                    }
-                                                    docker.withRegistry(registryUrl, 'jenkins-nexus'){
-                                                        def dockerImage = docker.build(localImageName, "${build_args} .")
-                                                        sh(label: 'Uploading docker images to registry',
-                                                           script: """docker tag ${localImageName} ${remoteRegistryImageName}
-                                                                      docker push ${remoteRegistryImageName}
-                                                                   """
-                                                        )
-                                                    }
-                                                }
-                                            }
+                                            deployDocker(IMAGE_NAME, DOCKER_TAG)
                                         }
                                     }
                                 }

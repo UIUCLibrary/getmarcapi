@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "getmarcapi"
-version = "0.0.6.dev0"
+version = "0.0.6.dev1"
 dependencies = [
     'flask',
     'uiucprescon.getmarc2>=0.1.5',
@@ -77,3 +77,16 @@ explicit = true
 
 [tool.uv.sources]
 "uiucprescon-getmarc2" = {index="uiuc_prescon_python"}
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+tag_format = "v$version"
+version_scheme = "pep440"
+version_provider = "pep621"
+update_changelog_on_bump = true
+major_version_zero = true
+changelog_merge_prerelease = true
+ignored_tag_formats = ["0.0.3"] #
+pre_bump_hooks = [
+    "uv lock"
+]
