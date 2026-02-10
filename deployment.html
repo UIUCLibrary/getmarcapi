@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Installing and Deployment &#8212; getmarcapi  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Development" href="development.html" />
+    <link rel="prev" title="GetMarc API server documentation" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="installing-and-deployment">
+<h1>Installing and Deployment<a class="headerlink" href="#installing-and-deployment" title="Link to this heading">¶</a></h1>
+<p>This section provides instructions for deploying the application in a production environment.</p>
+<p>In order to use the application, you need to create a configuration file as described below.</p>
+<section id="configuration-file">
+<span id="id1"></span><h2>Configuration File<a class="headerlink" href="#configuration-file" title="Link to this heading">¶</a></h2>
+<p>The application requires a configuration file in INI format. The configuration file should contain the following sections and options:</p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[ALMA_API]</span>
+<span class="na">API_DOMAIN</span><span class="o">=</span><span class="w">      </span><span class="c1">;url to ALMA&#39;s API endpoint</span>
+<span class="na">API_KEY</span><span class="o">=</span><span class="w">         </span><span class="c1">;API key for accessing ALMA&#39;s API</span>
+</pre></div>
+</div>
+</section>
+<section id="using-docker-image-for-deployment">
+<h2>Using Docker Image for Deployment<a class="headerlink" href="#using-docker-image-for-deployment" title="Link to this heading">¶</a></h2>
+<p>If a Docker image is available, you can deploy the application using Docker. And if not, you can build the Docker image
+locally using the provided <cite>Dockerfile</cite>. <a class="reference internal" href="development.html#dockerizing"><span class="std std-ref">See the Development section for instructions on building the Docker image.</span></a></p>
+<p>If a docker image has been created locally, use the following command, ensuring to mount your configuration file and
+expose the necessary port:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>-p<span class="w"> </span><span class="m">5000</span>:5000<span class="w"> </span>-v<span class="w"> </span>/path/to/your/settings.cfg:/app/settings.cfg:ro<span class="w"> </span>--name<span class="w"> </span>getmarc<span class="w"> </span>getmarcapi
+</pre></div>
+</div>
+<p>By default, the container looks for the config file at <cite>/app/settings.cfg</cite> inside the container, but this can be
+changed by setting the <cite>GETMARCAPI_SETTINGS</cite> environment variable to another path.</p>
+<p>The default port 5000 inside the container is used for the web server, so ensure this port is forwarded to the host
+machine.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">getmarcapi</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installing and Deployment</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-file">Configuration File</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-docker-image-for-deployment">Using Docker Image for Deployment</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="development.html">Development</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">GetMarc API server documentation</a></li>
+      <li>Next: <a href="development.html" title="next chapter">Development</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, University Library at The University of Illinois at Urbana Champaign: Preservation Services.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/deployment.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

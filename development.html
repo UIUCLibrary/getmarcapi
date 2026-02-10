@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Development &#8212; getmarcapi  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Installing and Deployment" href="deployment.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="development">
+<h1>Development<a class="headerlink" href="#development" title="Link to this heading">¶</a></h1>
+<p>This section provides an overview of the development and deployment process for the project.</p>
+<p>The application requires a configuration file in INI format. The configuration file format can be found in the
+<a class="reference internal" href="deployment.html#configuration-file"><span class="std std-ref">config file section</span></a>.</p>
+<section id="build-for-production">
+<h2>Build for Production<a class="headerlink" href="#build-for-production" title="Link to this heading">¶</a></h2>
+<section id="dockerizing-the-application">
+<span id="dockerizing"></span><h3>Dockerizing the Application<a class="headerlink" href="#dockerizing-the-application" title="Link to this heading">¶</a></h3>
+<p>To containerize the application using Docker, use the <cite>Dockerfile</cite> at the root of the project. You can build the Docker image with the following command:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>getmarcapi<span class="w"> </span>.
+</pre></div>
+</div>
+</section>
+</section>
+<section id="run-locally-for-development">
+<h2>Run Locally for Development<a class="headerlink" href="#run-locally-for-development" title="Link to this heading">¶</a></h2>
+<section id="prerequisites">
+<h3>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading">¶</a></h3>
+<p>Preinstalled Development dependencies:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>uv (manage Python e)</p></li>
+<li><p>Node.js and npm (for building static assets)</p></li>
+</ul>
+</div></blockquote>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>You should be using <a class="reference external" href="https://docs.astral.sh/uv/">uv</a> to manage your virtual environments and dependencies. These
+directions are going to assume that you have uv installed. If you do not have
+<cite>uv</cite> installed, you <em>can</em> use <cite>pip</cite> but <strong>uv is HIGHLY RECOMMENDED</strong>.</p>
+<p><a class="reference external" href="https://docs.astral.sh/uv/getting-started/installation/">See uv installation instructions</a>.</p>
+</div>
+</section>
+<section id="getting-development-environment-set-up">
+<h3>Getting Development Environment Set Up<a class="headerlink" href="#getting-development-environment-set-up" title="Link to this heading">¶</a></h3>
+<p>To run the application locally for development purposes, follow these steps:</p>
+<ol class="arabic">
+<li><p>Clone the repository:</p>
+<blockquote>
+<div><div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/UIUCLibrary/getmarcapi.git
+<span class="go">Cloning into &#39;getmarcapi&#39;...</span>
+<span class="go">remote: Enumerating objects: 986, done.</span>
+<span class="go">remote: Counting objects: 100% (364/364), done.</span>
+<span class="go">remote: Compressing objects: 100% (157/157), done.</span>
+<span class="go">remote: Total 986 (delta 271), reused 210 (delta 207), pack-reused 622 (from 2)</span>
+<span class="go">Receiving objects: 100% (986/986), 441.69 KiB | 7.36 MiB/s, done.</span>
+<span class="go">Resolving deltas: 100% (468/468), done.</span>
+
+<span class="gp">$ </span><span class="nb">cd</span><span class="w"> </span>getmarcapi
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p>Create and activate a Python virtual environment using uv with the development dependencies:</p>
+<blockquote>
+<div><p>On Unix Environments:</p>
+<blockquote>
+<div><div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>uv<span class="w"> </span>sync<span class="w"> </span>--dev
+<span class="go">Resolved 119 packages in 33ms</span>
+<span class="go">Audited 106 packages in 46ms</span>
+
+<span class="gp">$ </span><span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+</pre></div>
+</div>
+</div></blockquote>
+<p>On Windows Environments:</p>
+<blockquote>
+<div><div class="highlight-pwsh-session notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt; </span><span class="n">uv</span> <span class="n">sync</span> <span class="p">-</span><span class="n">-dev</span>
+<span class="go">Resolved 119 packages in 33ms</span>
+<span class="go">Audited 106 packages in 46ms</span>
+
+<span class="gp">&gt; </span><span class="p">.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">activate</span>
+</pre></div>
+</div>
+</div></blockquote>
+</div></blockquote>
+</li>
+<li><p>Gather and build the static assets:</p>
+<blockquote>
+<div><p>There are some nice CSS libraries used in the top-level API documentation page. During development, you will need to
+install them to getmarcapi/static.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(getmarcapi)</span> <span class="gp">$ </span>npm<span class="w"> </span>install
+<span class="gp gp-VirtualEnv">(getmarcapi)</span> <span class="gp">$ </span>npm<span class="w"> </span>run<span class="w"> </span>env<span class="w"> </span>--<span class="w"> </span>webpack<span class="w"> </span>--output-path<span class="o">=</span>./getmarcapi/static
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p>Start the Flask development server:</p>
+<blockquote>
+<div><div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(getmarcapi)</span> <span class="gp">$ </span><span class="nv">FLASK_APP</span><span class="o">=</span>getmarcapi/app.py<span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>flask<span class="w"> </span>run
+<span class="go"> * Serving Flask app &#39;getmarcapi/app.py&#39;</span>
+<span class="go"> * Debug mode: off</span>
+<span class="go">WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.</span>
+<span class="go"> * Running on http://127.0.0.1:5000</span>
+<span class="go">Press CTRL+C to quit</span>
+</pre></div>
+</div>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>You need to have the api url and api key.</p>
+<p>For development, you can set the <strong>ALMA_API_DOMAIN</strong> and <strong>API_KEY</strong> environment variables in your shell.</p>
+</div>
+</div></blockquote>
+</li>
+</ol>
+</section>
+</section>
+<section id="running-tests">
+<h2>Running Tests<a class="headerlink" href="#running-tests" title="Link to this heading">¶</a></h2>
+<p>To run tests, you need to have pytest installed. If you are using the development environment, it should already be
+installed. Tests are run by executing the pytest command.</p>
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(getmarcapi)</span> <span class="gp">$ </span>pytest
+<span class="go">============================== test session starts ==============================</span>
+<span class="go">platform darwin -- Python 3.11.10, pytest-8.4.2, pluggy-1.6.0 -- .venv/bin/python</span>
+<span class="go">cachedir: .pytest_cache</span>
+<span class="go">rootdir: /Users/mydev/pythonprojects/getmarcapi</span>
+<span class="go">configfile: pyproject.toml</span>
+<span class="go">testpaths: tests</span>
+<span class="go">plugins: anyio-4.12.1, typeguard-4.4.4</span>
+<span class="go">collected 27 items</span>
+
+<span class="go">tests/test_api.py::test_root PASSED</span>
+<span class="go">tests/test_api.py::test_get_record_xml PASSED</span>
+<span class="go">tests/test_api.py::test_get_record_missing_param PASSED</span>
+<span class="go">tests/test_api.py::test_api_documentation PASSED</span>
+<span class="go">...</span>
+<span class="go">============================== 27 passed in 0.34s ===============================</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">getmarcapi</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Installing and Deployment</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Development</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#build-for-production">Build for Production</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#run-locally-for-development">Run Locally for Development</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running-tests">Running Tests</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="deployment.html" title="previous chapter">Installing and Deployment</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, University Library at The University of Illinois at Urbana Champaign: Preservation Services.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/development.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
