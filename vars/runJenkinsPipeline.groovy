@@ -119,7 +119,7 @@ def call(){
                                         filename 'ci/docker/python/linux/Dockerfile'
                                         label 'linux && docker && x86'
                                         additionalBuildArgs '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL --build-arg PIP_CACHE_DIR=/.cache/pip'
-                                        args '--mount source=python-jenkins-tmp-getmarcapi,target=/tmp --mount type=tmpfs,dst=/.config --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv'
+                                        args "--label=purpose=ci --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"JOB_NAME=${env.JOB_NAME}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-jenkins-tmp-getmarcapi,target=/tmp --mount type=tmpfs,dst=/.config --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"
                                     }
                                 }
                                 environment{
@@ -523,8 +523,8 @@ def call(){
                             dockerfile {
                                 filename 'ci/docker/python/linux/Dockerfile'
                                 label 'linux && docker && x86'
-                                additionalBuildArgs '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL --build-arg PIP_CACHE_DIR=/.cache/pip'
-                                args '--mount source=python-jenkins-tmp-getmarcapi,target=/tmp'
+                                additionalBuildArgs '--label=purpose=ci --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL --build-arg PIP_CACHE_DIR=/.cache/pip'
+                                args "--label=purpose=ci --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"JOB_NAME=${env.JOB_NAME}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-jenkins-tmp-getmarcapi,target=/tmp"
                             }
                         }
                         environment{
@@ -619,8 +619,8 @@ def call(){
                                         dockerfile {
                                             filename 'ci/docker/python/linux/Dockerfile'
                                             label 'linux && docker && x86'
-                                            additionalBuildArgs '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL --build-arg PIP_CACHE_DIR=/.cache/pip'
-                                            args '--mount source=python-jenkins-tmp-getmarcapi,target=/tmp --tmpfs /tox_workdir:exec -e UV_PROJECT_ENVIRONMENT=/tox_workdir/.venv'
+                                            additionalBuildArgs '--label=purpose=ci --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL --build-arg PIP_CACHE_DIR=/.cache/pip'
+                                            args "--label=purpose=ci --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"JOB_NAME=${env.JOB_NAME}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-jenkins-tmp-getmarcapi,target=/tmp --tmpfs /tox_workdir:exec -e UV_PROJECT_ENVIRONMENT=/tox_workdir/.venv"
                                         }
                                     }
                                     when{
@@ -665,7 +665,7 @@ def call(){
                                 agent {
                                     docker{
                                         image 'ghcr.io/astral-sh/uv:debian'
-                                        args '--mount source=python-jenkins-tmp-getmarcapi,target=/tmp --tmpfs /.cache/uv:exec --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv'
+                                        args "--label=purpose=ci --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"JOB_NAME=${env.JOB_NAME}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-jenkins-tmp-getmarcapi,target=/tmp --tmpfs /.cache/uv:exec --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"
                                     }
                                 }
                                 when{
