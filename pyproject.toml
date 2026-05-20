@@ -21,10 +21,13 @@ maintainers = [
 ]
 description = "Provide MARC XML data"
 [dependency-groups]
-audit-dependencies = ['uv-secure']
 deploy = ['gunicorn', 'python-dotenv']
 test = ['pytest']
 tox = ["tox"]
+tox-uv = [
+    {include-group = "tox"},
+    "tox-uv-bare"
+]
 publish = ["twine"]
 docs = ["sphinx", "sphinxcontrib.spelling"]
 dev = [
@@ -40,7 +43,6 @@ dev = [
     {include-group = "publish"},
     {include-group = "test"},
     {include-group = "tox"},
-    {include-group = "audit-dependencies"},
 ]
 ci = ["pysonar", {include-group = "dev"}]
 

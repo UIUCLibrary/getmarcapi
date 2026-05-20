@@ -119,16 +119,16 @@ def call(){
                                         filename 'ci/docker/python/linux/Dockerfile'
                                         label 'linux && docker && x86'
                                         additionalBuildArgs '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL --build-arg PIP_CACHE_DIR=/.cache/pip'
-                                        args "--label=purpose=ci --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"JOB_NAME=${env.JOB_NAME}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-jenkins-tmp-getmarcapi,target=/tmp --mount type=tmpfs,dst=/.config --tmpfs /.tree-sitter:exec --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"
+                                        args "--label=purpose=ci --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"JOB_NAME=${env.JOB_NAME}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-jenkins-tmp-getmarcapi,target=/tmp --mount type=tmpfs,dst=/.config --tmpfs /.tree-sitter:exec --tmpfs /tmp_data:exec --tmpfs /.sonar:exec --tmpfs /.cache:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"
                                     }
                                 }
                                 environment{
                                     PIP_CACHE_DIR='/tmp/pipcache'
-                                    UV_INDEX_STRATEGY='unsafe-best-match'
                                     UV_TOOL_DIR='/tmp/uvtools'
                                     UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
                                     UV_CACHE_DIR='/tmp/uvcache'
-                                    UV_PYTHON='3.14+gil'
+                                    UV_PYTHON_PREFERENCE='system'
+                                    UV_PYTHON='3.14'
                                 }
                                 when{
                                     equals expected: true, actual: params.RUN_CHECKS
@@ -309,11 +309,8 @@ def call(){
                                                     timeout(5)
                                                 }
                                                 steps{
-                                                    catchError(buildResult: 'UNSTABLE', message: 'uv-secure found issues', stageResult: 'UNSTABLE') {
-                                                        sh '''unset UV_INDEX_URL
-                                                              unset UV_EXTRA_INDEX_URL
-                                                              uv run --only-group=audit-dependencies --isolated uv-secure --disable-cache uv.lock
-                                                           '''
+                                                    catchError(buildResult: 'UNSTABLE', message: 'uv audit found issues', stageResult: 'UNSTABLE') {
+                                                        sh 'uv audit'
                                                     }
                                                 }
                                             }
@@ -322,7 +319,7 @@ def call(){
                                                     timeout(5)
                                                 }
                                                 steps{
-                                                    catchError(buildResult: 'SUCCESS', message: 'Audit NPM found issues', stageResult: 'UNSTABLE') {
+                                                    catchError(buildResult: 'UNSTABLE', message: 'Audit NPM found issues', stageResult: 'UNSTABLE') {
                                                         sh 'npm audit --json > logs/npm-audit.json'
                                                     }
                                                 }
@@ -350,12 +347,10 @@ def call(){
                                             lock('getmarcapi-sonarscanner')
                                         }
                                         environment{
-                                            UV_INDEX_STRATEGY='unsafe-best-match'
                                             SONAR_SCANNER_HOME='/tmp/sonar'
                                             UV_TOOL_DIR='/tmp/uvtools'
                                             UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
                                             UV_CACHE_DIR='/tmp/uvcache'
-                                            SONAR_USER_HOME='/tmp/sonar'
                                             VERSION="${readTOML( file: 'pyproject.toml')['project'].version}"
 
                                         }
@@ -384,12 +379,12 @@ def call(){
                                                     withCredentials([string(credentialsId: params.SONARCLOUD_TOKEN, variable: 'token')]) {
                                                         sh(
                                                             label: 'Running Sonar Scanner',
-                                                            script: "uvx pysonar -t \$token -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/pytest/junit-pytest.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml  -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${env.CHANGE_ID ? '-Dsonar.pullrequest.key=$CHANGE_ID -Dsonar.pullrequest.base=$BRANCH_NAME' : '-Dsonar.branch.name=$BRANCH_NAME' }",
+                                                            script: "uv run pysonar -t \$token -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/pytest/junit-pytest.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml  -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${env.CHANGE_ID ? '-Dsonar.pullrequest.key=$CHANGE_ID -Dsonar.pullrequest.base=$BRANCH_NAME' : '-Dsonar.branch.name=$BRANCH_NAME' }",
                                                         )
                                                     }
                                                 }
                                                 timeout(time: 1, unit: 'HOURS') {
-                                                    def sonarqubeResult = waitForQualityGate(abortPipeline: false, credentialsId: params.SONARCLOUD_TOKEN)
+                                                    def sonarqubeResult = waitForQualityGate(abortPipeline: false)
                                                     if (sonarqubeResult.status != 'OK') {
                                                        unstable "SonarQube quality gate: ${sonarqubeResult.status}"
                                                    }
@@ -434,7 +429,6 @@ def call(){
                                 }
                                 environment{
                                     PIP_CACHE_DIR='/tmp/pipcache'
-                                    UV_INDEX_STRATEGY='unsafe-best-match'
                                     UV_TOOL_DIR='/tmp/uvtools'
                                     UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
                                     UV_CACHE_DIR='/tmp/uvcache'
@@ -443,12 +437,12 @@ def call(){
                                     script{
                                         def envs = []
                                         node('docker && linux'){
+                                            checkout scm
                                             docker.image('ghcr.io/astral-sh/uv:debian').inside('--mount source=python-tmp-getmarcapi,target=/tmp'){
                                                 try{
-                                                    checkout scm
                                                     envs = sh(
                                                         label: 'Get tox environments',
-                                                        script: 'uv run --quiet --only-group tox --with tox-uv --frozen tox list -d --no-desc',
+                                                        script: 'uv run --quiet --only-group tox --frozen tox list -d --no-desc',
                                                         returnStdout: true,
                                                     ).trim().split('\n')
                                                 } finally{
@@ -479,7 +473,7 @@ def call(){
                                                                     try{
                                                                         sh( label: 'Running Tox',
                                                                             script: """uv python install cpython-${version}
-                                                                                       uv run --frozen --only-group tox --with tox-uv tox run -e ${toxEnv} --runner uv-venv-lock-runner --workdir /tox_workdir
+                                                                                       uv run --frozen --only-group=tox-uv tox run -e ${toxEnv} --runner uv-venv-lock-runner --workdir /tox_workdir
                                                                                     """
                                                                             )
                                                                     } finally{
@@ -529,7 +523,6 @@ def call(){
                         }
                         environment{
                             PIP_CACHE_DIR='/tmp/pipcache'
-                            UV_INDEX_STRATEGY='unsafe-best-match'
                             UV_TOOL_DIR='/tmp/uvtools'
                             UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
                             UV_CACHE_DIR='/tmp/uvcache'
@@ -609,7 +602,7 @@ def call(){
                                         script{
                                             sh(
                                                 label: 'Testing with tox',
-                                                script: "uv run --frozen --no-dev --only-group tox --with tox-uv tox --workdir /tox_workdir/tox --installpkg ${findFiles(glob: 'dist/*.whl')[0].path} -e py${PYTHON_VERSION.replace('.', '')}"
+                                                script: "uv run --frozen --no-dev --only-group=tox-uv tox --workdir /tox_workdir/tox --installpkg ${findFiles(glob: 'dist/*.whl')[0].path} -e py${PYTHON_VERSION.replace('.', '')}"
                                             )
                                         }
                                     }
@@ -632,7 +625,7 @@ def call(){
                                         script{
                                             sh(
                                                 label: 'Testing with tox',
-                                                script: "uv run --only-group tox --with tox-uv --frozen tox --workdir /tox_workdir/tox --installpkg ${findFiles(glob: 'dist/*.tar.gz')[0].path} -e py${PYTHON_VERSION.replace('.', '')}"
+                                                script: "uv run --only-group=tox-uv --frozen tox --workdir /tox_workdir/tox --installpkg ${findFiles(glob: 'dist/*.tar.gz')[0].path} -e py${PYTHON_VERSION.replace('.', '')}"
                                             )
                                         }
                                     }
