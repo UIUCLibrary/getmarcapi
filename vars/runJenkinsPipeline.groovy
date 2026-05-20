@@ -119,7 +119,7 @@ def call(){
                                         filename 'ci/docker/python/linux/Dockerfile'
                                         label 'linux && docker && x86'
                                         additionalBuildArgs '--build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL --build-arg PIP_CACHE_DIR=/.cache/pip'
-                                        args "--label=purpose=ci --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"JOB_NAME=${env.JOB_NAME}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-jenkins-tmp-getmarcapi,target=/tmp --mount type=tmpfs,dst=/.config --tmpfs /.tree-sitter:exec --tmpfs /tmp_data:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"
+                                        args "--label=purpose=ci --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"JOB_NAME=${env.JOB_NAME}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-jenkins-tmp-getmarcapi,target=/tmp --mount type=tmpfs,dst=/.config --tmpfs /.tree-sitter:exec --tmpfs /tmp_data:exec --tmpfs /.sonar:exec --tmpfs /.cache:exec -e UV_PROJECT_ENVIRONMENT=/tmp_data/.venv"
                                     }
                                 }
                                 environment{
@@ -128,7 +128,8 @@ def call(){
                                     UV_TOOL_DIR='/tmp/uvtools'
                                     UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
                                     UV_CACHE_DIR='/tmp/uvcache'
-                                    UV_PYTHON='3.14+gil'
+                                    UV_PYTHON_PREFERENCE='system'
+                                    UV_PYTHON='3.14'
                                 }
                                 when{
                                     equals expected: true, actual: params.RUN_CHECKS
@@ -355,7 +356,6 @@ def call(){
                                             UV_TOOL_DIR='/tmp/uvtools'
                                             UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
                                             UV_CACHE_DIR='/tmp/uvcache'
-                                            SONAR_USER_HOME='/tmp/sonar'
                                             VERSION="${readTOML( file: 'pyproject.toml')['project'].version}"
 
                                         }
