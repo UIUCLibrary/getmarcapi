@@ -437,9 +437,9 @@ def call(){
                                     script{
                                         def envs = []
                                         node('docker && linux'){
+                                            checkout scm
                                             docker.image('ghcr.io/astral-sh/uv:debian').inside('--mount source=python-tmp-getmarcapi,target=/tmp'){
                                                 try{
-                                                    checkout scm
                                                     envs = sh(
                                                         label: 'Get tox environments',
                                                         script: 'uv run --quiet --only-group tox --frozen tox list -d --no-desc',
