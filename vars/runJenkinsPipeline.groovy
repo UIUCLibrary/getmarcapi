@@ -124,7 +124,6 @@ def call(){
                                 }
                                 environment{
                                     PIP_CACHE_DIR='/tmp/pipcache'
-                                    UV_INDEX_STRATEGY='unsafe-best-match'
                                     UV_TOOL_DIR='/tmp/uvtools'
                                     UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
                                     UV_CACHE_DIR='/tmp/uvcache'
@@ -348,7 +347,6 @@ def call(){
                                             lock('getmarcapi-sonarscanner')
                                         }
                                         environment{
-                                            UV_INDEX_STRATEGY='unsafe-best-match'
                                             SONAR_SCANNER_HOME='/tmp/sonar'
                                             UV_TOOL_DIR='/tmp/uvtools'
                                             UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
@@ -431,7 +429,6 @@ def call(){
                                 }
                                 environment{
                                     PIP_CACHE_DIR='/tmp/pipcache'
-                                    UV_INDEX_STRATEGY='unsafe-best-match'
                                     UV_TOOL_DIR='/tmp/uvtools'
                                     UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
                                     UV_CACHE_DIR='/tmp/uvcache'
@@ -526,7 +523,6 @@ def call(){
                         }
                         environment{
                             PIP_CACHE_DIR='/tmp/pipcache'
-                            UV_INDEX_STRATEGY='unsafe-best-match'
                             UV_TOOL_DIR='/tmp/uvtools'
                             UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
                             UV_CACHE_DIR='/tmp/uvcache'
