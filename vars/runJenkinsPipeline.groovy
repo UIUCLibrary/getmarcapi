@@ -445,7 +445,7 @@ def call(){
                                                     checkout scm
                                                     envs = sh(
                                                         label: 'Get tox environments',
-                                                        script: 'uv run --quiet --only-group tox --with tox-uv --frozen tox list -d --no-desc',
+                                                        script: 'uv run --quiet --only-group tox --frozen tox list -d --no-desc',
                                                         returnStdout: true,
                                                     ).trim().split('\n')
                                                 } finally{
@@ -476,7 +476,7 @@ def call(){
                                                                     try{
                                                                         sh( label: 'Running Tox',
                                                                             script: """uv python install cpython-${version}
-                                                                                       uv run --frozen --only-group tox --with tox-uv tox run -e ${toxEnv} --runner uv-venv-lock-runner --workdir /tox_workdir
+                                                                                       uv run --frozen --only-group=tox-uv tox run -e ${toxEnv} --runner uv-venv-lock-runner --workdir /tox_workdir
                                                                                     """
                                                                             )
                                                                     } finally{
@@ -606,7 +606,7 @@ def call(){
                                         script{
                                             sh(
                                                 label: 'Testing with tox',
-                                                script: "uv run --frozen --no-dev --only-group tox --with tox-uv tox --workdir /tox_workdir/tox --installpkg ${findFiles(glob: 'dist/*.whl')[0].path} -e py${PYTHON_VERSION.replace('.', '')}"
+                                                script: "uv run --frozen --no-dev --only-group=tox-uv tox --workdir /tox_workdir/tox --installpkg ${findFiles(glob: 'dist/*.whl')[0].path} -e py${PYTHON_VERSION.replace('.', '')}"
                                             )
                                         }
                                     }
@@ -629,7 +629,7 @@ def call(){
                                         script{
                                             sh(
                                                 label: 'Testing with tox',
-                                                script: "uv run --only-group tox --with tox-uv --frozen tox --workdir /tox_workdir/tox --installpkg ${findFiles(glob: 'dist/*.tar.gz')[0].path} -e py${PYTHON_VERSION.replace('.', '')}"
+                                                script: "uv run --only-group=tox-uv --frozen tox --workdir /tox_workdir/tox --installpkg ${findFiles(glob: 'dist/*.tar.gz')[0].path} -e py${PYTHON_VERSION.replace('.', '')}"
                                             )
                                         }
                                     }
