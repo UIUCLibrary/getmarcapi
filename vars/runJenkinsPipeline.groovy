@@ -381,12 +381,12 @@ def call(){
                                                     withCredentials([string(credentialsId: params.SONARCLOUD_TOKEN, variable: 'token')]) {
                                                         sh(
                                                             label: 'Running Sonar Scanner',
-                                                            script: "uvx pysonar -t \$token -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/pytest/junit-pytest.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml  -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${env.CHANGE_ID ? '-Dsonar.pullrequest.key=$CHANGE_ID -Dsonar.pullrequest.base=$BRANCH_NAME' : '-Dsonar.branch.name=$BRANCH_NAME' }",
+                                                            script: "uv run pysonar -t \$token -Dsonar.projectVersion=${env.VERSION} -Dsonar.python.xunit.reportPath=./reports/pytest/junit-pytest.xml -Dsonar.python.coverage.reportPaths=./reports/coverage.xml  -Dsonar.python.mypy.reportPaths=./logs/mypy.log ${env.CHANGE_ID ? '-Dsonar.pullrequest.key=$CHANGE_ID -Dsonar.pullrequest.base=$BRANCH_NAME' : '-Dsonar.branch.name=$BRANCH_NAME' }",
                                                         )
                                                     }
                                                 }
                                                 timeout(time: 1, unit: 'HOURS') {
-                                                    def sonarqubeResult = waitForQualityGate(abortPipeline: false, credentialsId: params.SONARCLOUD_TOKEN)
+                                                    def sonarqubeResult = waitForQualityGate(abortPipeline: false)
                                                     if (sonarqubeResult.status != 'OK') {
                                                        unstable "SonarQube quality gate: ${sonarqubeResult.status}"
                                                    }
