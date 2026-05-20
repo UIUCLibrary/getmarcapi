@@ -319,7 +319,7 @@ def call(){
                                                     timeout(5)
                                                 }
                                                 steps{
-                                                    catchError(buildResult: 'SUCCESS', message: 'Audit NPM found issues', stageResult: 'UNSTABLE') {
+                                                    catchError(buildResult: 'UNSTABLE', message: 'Audit NPM found issues', stageResult: 'UNSTABLE') {
                                                         sh 'npm audit --json > logs/npm-audit.json'
                                                     }
                                                 }
