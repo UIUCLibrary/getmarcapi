@@ -7,14 +7,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 COPY getmarcapi /src/getmarcapi/
 COPY src /src/src/
 WORKDIR /src
-COPY package.json package-lock.json webpack.config.js ./
-RUN --mount=type=cache,target=/root/.npm npm install
-RUN npm run env -- webpack --output-path=/output
 
-#
 ARG PIP_INDEX_URL
 ARG PIP_EXTRA_INDEX_URL
-COPY pyproject.toml uv.lock README.rst README.md setup.py MANIFEST.in /src/
+COPY pyproject.toml uv.lock README.rst README.md MANIFEST.in /src/
 RUN python -m pip install --disable-pip-version-check uv && \
   uv build --wheel --out-dir /wheels
 
