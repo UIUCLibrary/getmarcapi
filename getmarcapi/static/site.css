@@ -1,0 +1,149 @@
+:root {
+    color-scheme: light;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: #20252b;
+    background: #f5f7f9;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    line-height: 1.6;
+}
+
+a {
+    color: #075ea8;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.15em;
+}
+
+a:hover {
+    color: #034078;
+}
+
+a:focus-visible {
+    outline: 3px solid #e09b24;
+    outline-offset: 3px;
+}
+
+code {
+    padding: 0.1em 0.35em;
+    border-radius: 0.25rem;
+    background: #edf1f5;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    font-size: 0.9em;
+    overflow-wrap: anywhere;
+}
+
+.page {
+    width: min(100% - 2rem, 58rem);
+    margin: 0 auto;
+    padding: 3rem 0;
+}
+
+.page-header {
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #cbd2d9;
+}
+
+.page-header h1 {
+    margin: 0;
+    font-size: clamp(2rem, 5vw, 2.75rem);
+    line-height: 1.15;
+}
+
+.page-summary {
+    margin: 0.75rem 0 0;
+    color: #4b5560;
+    font-size: 1.15rem;
+}
+
+.page-content {
+    padding-top: 1.5rem;
+}
+
+.api-description {
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #cbd2d9;
+}
+
+.identifier-list {
+    display: grid;
+    grid-template-columns: minmax(6rem, 8rem) minmax(0, 1fr);
+    gap: 0.5rem 1rem;
+    margin: 1.25rem 0 0;
+}
+
+.identifier-list dt {
+    font-weight: 700;
+}
+
+.identifier-list dd {
+    margin: 0;
+}
+
+.identifier-list dd p:first-child {
+    margin-top: 0;
+}
+
+.identifier-list dd p:last-child {
+    margin-bottom: 0;
+}
+
+.examples {
+    padding-top: 1.5rem;
+}
+
+.examples h2 {
+    margin: 0 0 1rem;
+    font-size: 1.5rem;
+}
+
+.example-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+    gap: 1rem;
+}
+
+.example {
+    min-width: 0;
+    padding: 1rem 1.25rem;
+    border: 1px solid #d7dde3;
+    border-radius: 0.5rem;
+    background: #fff;
+}
+
+.example h3 {
+    margin: 0 0 0.75rem;
+    font-size: 1.1rem;
+}
+
+.example ul {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.example li + li {
+    margin-top: 0.5rem;
+}
+
+@media (max-width: 30rem) {
+    .page {
+        width: min(100% - 1.5rem, 58rem);
+        padding: 2rem 0;
+    }
+
+    .identifier-list {
+        grid-template-columns: 1fr;
+        gap: 0.25rem;
+    }
+
+    .identifier-list dd {
+        margin-bottom: 0.75rem;
+    }
+}

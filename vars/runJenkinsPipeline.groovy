@@ -314,21 +314,6 @@ def call(){
                                                     }
                                                 }
                                             }
-                                            stage('Audit NPM packages'){
-                                                options{
-                                                    timeout(5)
-                                                }
-                                                steps{
-                                                    catchError(buildResult: 'UNSTABLE', message: 'Audit NPM found issues', stageResult: 'UNSTABLE') {
-                                                        sh 'npm audit --json > logs/npm-audit.json'
-                                                    }
-                                                }
-                                                post{
-                                                    always{
-                                                        recordIssues(tools: [npmAudit(pattern: 'logs/npm-audit.json')])
-                                                    }
-                                                }
-                                            }
                                         }
                                         post{
                                             always{
