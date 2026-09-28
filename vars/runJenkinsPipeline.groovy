@@ -1,9 +1,3 @@
-library identifier: 'JenkinsPythonHelperLibrary@2024.1.2', retriever: modernSCM(
-  [$class: 'GitSCMSource',
-   remote: 'https://github.com/UIUCLibrary/JenkinsPythonHelperLibrary.git',
-   ])
-
-
 def getPypiConfig() {
     node(){
         configFileProvider([configFile(fileId: 'pypi_config', variable: 'CONFIG_FILE')]) {
@@ -12,6 +6,35 @@ def getPypiConfig() {
         }
     }
 }
+@NonCPS
+def getExclusions(config){
+    (config['supporting']['exclusions'] ?: []).collect{ exclusion ->
+        return exclusion.collect{ component ->
+            return ["name": component['name'], "values": component['values']]
+        }
+    }
+}
+
+def getConfig(){
+    def configData = [:]
+    node(){
+        checkout scm
+        def configID = 'getmarcapi_pipeline_config'
+        def defaultConfigFile = 'ci/jenkins/config.json'
+        try{
+            configFileProvider([configFile(fileId: configID, variable: 'config_file')]) {
+                echo "Using configuration from: \"$configID\""
+                configData = readJSON( file: config_file)
+            }
+        } catch (e){
+            echo "Using default configuration in ${defaultConfigFile}. To override, create a new config file in Jenkins with id: \"${configID}\""
+            configData = readJSON( file: defaultConfigFile)
+        }
+    }
+    configData['supporting']['exclusions'] = getExclusions(configData)
+    return configData
+}
+
 
 def get_sonarqube_unresolved_issues(report_task_file){
     script{
@@ -41,52 +64,74 @@ def deployDocker(imageName, dockerTag){
         def localImageName
         def build_args
         def remoteRegistryImageName
-        configFileProvider([configFile(fileId: 'getmarc_deployapi', variable: 'CONFIG_FILE')]) {
-            try{
-                def CONFIG = readJSON(file: CONFIG_FILE)['deploy']
-                build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(' ')
-                registryUrl = CONFIG['docker']['server']['registry']
-                remoteRegistryImageName = "${registryUrl.replace('http://', '').replace('https://', '')}/${imageName}:${dockerTag}"
-                localImageName = "${imageName}:${dockerTag}"
-            } catch(e){
-                error """======================================================
-                         Config file is not valid
-                         ------------------------------------------------------
-                         Details:
+        try{
+            def CONFIG = getConfig()
+            build_args = CONFIG['docker']['build']['buildArgs'].collect{"--build-arg=${it}"}.join(' ')
+            registryUrl = CONFIG['docker']['server']['registry']
+            remoteRegistryImageName = "${registryUrl.replace('http://', '').replace('https://', '')}/${imageName}:${dockerTag}"
+            localImageName = "${imageName}:${dockerTag}"
+        } catch(e){
+            error """======================================================
+                     Config file is not valid
+                     ------------------------------------------------------
+                     Details:
 
-                         ${e.message}
-                         ------------------------------------------------------
-                         The config file must be a JSON file and be in the following format.
+                     ${e.message}
+                     ------------------------------------------------------
+                     The config file must be a JSON file and be in the following format.
 
-                         {
-                           "deploy": {
-                             "docker": {
-                               "build": {
-                                 "buildArgs": []
-                               },
-                               "server": {
-                                 "registry": "FILL THIS OUT WITH YOUR DOCKER REGISTRY URL"
-                               }
-                             }
+                     {
+                       "deploy": {
+                         "docker": {
+                           "build": {
+                             "buildArgs": []
+                           },
+                           "server": {
+                             "registry": "FILL THIS OUT WITH YOUR DOCKER REGISTRY URL"
                            }
                          }
+                       }
+                     }
 
-                         ======================================================
-                      """
+                     ======================================================
+                  """
+        }
+        docker.withRegistry(registryUrl, 'jenkins-nexus'){
+            def dockerImage = docker.build(localImageName, "${build_args} .")
+            sh(label: 'Uploading docker images to registry',
+               script: """docker tag ${localImageName} ${remoteRegistryImageName}
+                          docker push ${remoteRegistryImageName}
+                       """
+            )
+        }
+    }
+}
+def testPackage(entry, params){
+    node("linux && ${entry.ARCHITECTURE} && docker") {
+        try{
+            checkout scm
+            unstash 'PYTHON_PACKAGES'
+            docker.image('ghcr.io/astral-sh/uv:debian').inside('--mount source=python-tmp-getmarapi,target="/tmp" --tmpfs /tox_workdir:exec -e UV_PROJECT_ENVIRONMENT=/tox_workdir/.venv'){
+                findFiles(glob: entry.PACKAGE_TYPE == 'wheel' ? 'dist/*.whl' : 'dist/*.tar.gz').each{
+                    sh(
+                        label: 'Testing with tox',
+                        script: "uv run --frozen --no-dev --only-group=tox-uv tox --workdir /tox_workdir/tox --installpkg ${it.path} -e py${entry.PYTHON_VERSION.replace('.', '')}"
+                    )
+                }
             }
-            docker.withRegistry(registryUrl, 'jenkins-nexus'){
-                def dockerImage = docker.build(localImageName, "${build_args} .")
-                sh(label: 'Uploading docker images to registry',
-                   script: """docker tag ${localImageName} ${remoteRegistryImageName}
-                              docker push ${remoteRegistryImageName}
-                           """
-                )
-            }
+        } finally{
+            sh "${tool(name: 'Default', type: 'git')} clean -dfx"
         }
     }
 }
 
+
 def call(){
+    library identifier: 'JenkinsPythonHelperLibrary@2024.12.0', retriever: modernSCM(
+      [$class: 'GitSCMSource',
+       remote: 'https://github.com/UIUCLibrary/JenkinsPythonHelperLibrary.git',
+       ])
+    def config = getConfig()
     pipeline {
         agent none
         parameters {
@@ -128,7 +173,7 @@ def call(){
                                     UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
                                     UV_CACHE_DIR='/tmp/uvcache'
                                     UV_PYTHON_PREFERENCE='system'
-                                    UV_PYTHON='3.14'
+                                    UV_PYTHON="${config['supporting']['defaultPythonVersion']}"
                                 }
                                 when{
                                     equals expected: true, actual: params.RUN_CHECKS
@@ -550,72 +595,34 @@ def call(){
                             UV_PYTHON_INSTALL_DIR='/tmp/uvpython'
                             UV_CACHE_DIR='/tmp/uvcache'
                         }
-                        matrix {
-                            axes {
-                                axis {
-                                    name 'PYTHON_VERSION'
-                                    values  '3.10', '3.11', '3.12', '3.13', '3.14', '3.14t'
-                                }
-                                axis {
-                                    name 'PACKAGE_TYPE'
-                                    values 'wheel', 'sdist'
-                                }
-                                axis {
-                                    name 'ARCHITECTURE'
-                                    values 'arm64', 'x86_64'
-                                }
-                            }
-                            when{
-                                equals expected: true, actual: params["INCLUDE_LINUX-${ARCHITECTURE}".toUpperCase()]
-                                beforeAgent true
-                            }
-                            stages {
-                                stage('Test Wheel Package'){
-                                    agent {
-                                        docker {
-                                            image 'ghcr.io/astral-sh/uv:debian'
-                                            label "linux && ${ARCHITECTURE} && docker"
-                                            args '--mount source=python-tmp-getmarapi,target="/tmp" --tmpfs /tox_workdir:exec -e UV_PROJECT_ENVIRONMENT=/tox_workdir/.venv'
+                        steps{
+                            customMatrix(
+                                axes: [
+                                    [
+                                        name: 'PYTHON_VERSION',
+                                        values: config['supporting']['pythonVersions']
+                                    ],
+                                    [
+                                        name: 'ARCHITECTURE',
+                                        values: config['supporting']['architecture']
+                                    ],
+                                    [
+                                        name: 'PACKAGE_TYPE',
+                                        values: ['wheel', 'sdist'],
+                                    ]
+                                ],
+                                excludes: config['supporting']['exclusions'],
+                                when: {entry -> "INCLUDE_${entry.OS}-${entry.ARCHITECTURE}".toUpperCase() && params["INCLUDE_LINUX-${entry.ARCHITECTURE}".toUpperCase()]},
+                                stages: [
+                                    { entry ->
+                                        stage('Test Package') {
+                                            retry(conditions: [agent()], count: 2) {
+                                                testPackage(entry, params)
+                                            }
                                         }
                                     }
-                                    when{
-                                        expression{PACKAGE_TYPE == 'wheel'}
-                                        beforeAgent true
-                                    }
-                                    steps{
-                                        unstash 'PYTHON_PACKAGES'
-                                        script{
-                                            sh(
-                                                label: 'Testing with tox',
-                                                script: "uv run --frozen --no-dev --only-group=tox-uv tox --workdir /tox_workdir/tox --installpkg ${findFiles(glob: 'dist/*.whl')[0].path} -e py${PYTHON_VERSION.replace('.', '')}"
-                                            )
-                                        }
-                                    }
-                                }
-                                stage('Test Source Package'){
-                                    agent {
-                                        dockerfile {
-                                            filename 'ci/docker/python/linux/Dockerfile'
-                                            label 'linux && docker && x86'
-                                            additionalBuildArgs '--label=purpose=ci --build-arg PIP_EXTRA_INDEX_URL --build-arg PIP_INDEX_URL --build-arg PIP_CACHE_DIR=/.cache/pip'
-                                            args "--label=purpose=ci --label \"absoluteUrl=${currentBuild.absoluteUrl}\" --label \"JOB_NAME=${env.JOB_NAME}\" --label \"BUILD_NUMBER=${currentBuild.number}\" --mount source=python-jenkins-tmp-getmarcapi,target=/tmp --tmpfs /tox_workdir:exec -e UV_PROJECT_ENVIRONMENT=/tox_workdir/.venv"
-                                        }
-                                    }
-                                    when{
-                                        expression{PACKAGE_TYPE == 'sdist'}
-                                        beforeAgent true
-                                    }
-                                    steps{
-                                        unstash 'PYTHON_PACKAGES'
-                                        script{
-                                            sh(
-                                                label: 'Testing with tox',
-                                                script: "uv run --only-group=tox-uv --frozen tox --workdir /tox_workdir/tox --installpkg ${findFiles(glob: 'dist/*.tar.gz')[0].path} -e py${PYTHON_VERSION.replace('.', '')}"
-                                            )
-                                        }
-                                    }
-                                }
-                            }
+                                ]
+                            )
                         }
                     }
                 }

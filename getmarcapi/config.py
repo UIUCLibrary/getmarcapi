@@ -48,6 +48,7 @@ def get_config(app: flask.Flask) -> None:
             app.config[k] = None
 
 
+# pylint: disable-next=too-few-public-methods
 class AbcConfigStrategy(abc.ABC):
     """Base class for loading configurations."""
 
@@ -63,6 +64,7 @@ class AbcConfigStrategy(abc.ABC):
         """
 
 
+# pylint: disable-next=too-few-public-methods
 class EnvConfig(AbcConfigStrategy):
     """Load app configurations from environment Variables."""
 
@@ -86,6 +88,7 @@ class EnvConfig(AbcConfigStrategy):
         return self.configuration.get(key)
 
 
+# pylint: disable-next=too-few-public-methods
 class ConfigFile(AbcConfigStrategy):
     """Load app configurations from a file."""
 
@@ -113,12 +116,23 @@ class ConfigFile(AbcConfigStrategy):
         return self.alma_api.get(key)
 
 
+# pylint: disable-next=too-few-public-methods
 class ConfigLoader:
+    """Load app configurations."""
 
     def __init__(self, strategy: AbcConfigStrategy) -> None:
         self.strategy = strategy
 
     def get_config_value(self, key: str) -> Optional[str]:
+        """Get the value from the config file.
+
+        Args:
+            key: Configuration key
+
+        Returns:
+            Possible value if exists, else returns None
+
+        """
         return self.strategy.get_config_value(key)
 
 
