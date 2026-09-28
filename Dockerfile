@@ -39,7 +39,8 @@ RUN --mount=type=cache,target=${UV_CACHE_DIR} \
   ./uv/bin/uv sync --group deploy --no-dev --no-editable --no-install-project --find-links=/wheels && \
   ./uv/bin/uv pip install --find-links=/wheels --no-index getmarcapi --no-deps
 EXPOSE 5000
-COPY api.cfg /app/settings.cfg
+ARG CONFIG_FILE=api.cfg
+COPY ${CONFIG_FILE} /app/settings.cfg
 ENV GETMARCAPI_SETTINGS=/app/settings.cfg
 RUN  ./.venv/bin/python -m getmarcapi --check
 CMD ./.venv/bin/gunicorn getmarcapi.app:app --bind 0.0.0.0:5000 --log-level=debug
